@@ -1,0 +1,3 @@
+[submodule "external/lamp"]
+	path = external/lamp
+	url = https://github.com/frozenless/lamp.git
