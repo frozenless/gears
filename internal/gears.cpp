@@ -35,11 +35,19 @@ void keyboard_actions(GLFWwindow* ptr, const int key, int, const int action, int
 {
 	if (action == GLFW_PRESS)
 	{
-		auto cubes = static_cast<Gears*>(glfwGetWindowUserPointer(ptr));
+		auto gears = static_cast<Gears*>(glfwGetWindowUserPointer(ptr));
 
 		switch (key) {
 			case GLFW_KEY_ESCAPE: {
-				cubes->window().close();
+				gears->window().close();
+				break;
+			}
+			case GLFW_KEY_E: {
+				gears->toggle_editor();
+				break;
+			}
+			case GLFW_KEY_W: {
+				gears->toggle_wires();
 				break;
 			}
 			default:
@@ -73,7 +81,7 @@ void Gears::init()
 	gear_mesh = add_gear(g);
 
 	_light.color    = lamp::rgb(1.0f);
-	_light.position = lamp::v3( 10.0f, 10.0f, 10.0f);
+	_light.position = lamp::v3( 10.0f, 10.0f, 15.0f);
 	_light.ambient  = 0.1f;
 	_light.diffuse  = 0.9f;
 
