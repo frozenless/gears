@@ -3,9 +3,6 @@
 #include "systems/rotation.hpp"
 #include "components/rotation.hpp"
 
-#include <imgui.h>
-#include <GLFW/glfw3.h>
-
 #include "engine/systems/renderer.hpp"
 
 #include "engine/components/transform.hpp"
@@ -23,6 +20,8 @@
 
 #include "editor.hpp"
 #include "assets.inl"
+
+#include <imgui.h>
 
 lamp::gl::mesh_ptr gear_mesh;
 
@@ -44,8 +43,8 @@ void Gears::init()
 	auto debug_vert = lamp::Assets::create("shaders/glsl/debug.vert", GL_VERTEX_SHADER);
 	auto debug_frag = lamp::Assets::create("shaders/glsl/debug.frag", GL_FRAGMENT_SHADER);
 
-	debug_shader   = lamp::Assets::create(debug_vert,   debug_frag);
-	model_shader   = lamp::Assets::create(model_vert,   model_frag);
+	debug_shader = lamp::Assets::create(debug_vert, debug_frag);
+	model_shader = lamp::Assets::create(model_vert, model_frag);
 
 	gear g { };
 	g.inner_radius = 0.7f;
@@ -66,9 +65,9 @@ void Gears::init()
 
 	auto first_gear = _ecs.entities.create();
 	first_gear.assign<lamp::components::transform>();
-	auto first_gear_renderer  = first_gear.assign<lamp::components::renderer>();
-	auto first_gear_position  = first_gear.assign<lamp::components::position>();
-	auto first_gear_rotation  = first_gear.assign<rotation>();
+	auto first_gear_renderer = first_gear.assign<lamp::components::renderer>();
+	auto first_gear_position = first_gear.assign<lamp::components::position>();
+	auto first_gear_rotation = first_gear.assign<rotation>();
 	first_gear_rotation->speed = 0.4f;
 
 	first_gear_renderer->shader   = model_shader;
@@ -81,9 +80,9 @@ void Gears::init()
 
 	auto second_gear = _ecs.entities.create();
 	second_gear.assign<lamp::components::transform>();
-	auto second_gear_renderer  = second_gear.assign<lamp::components::renderer>();
-	auto second_gear_position  = second_gear.assign<lamp::components::position>();
-	auto second_gear_rotation  = second_gear.assign<rotation>();
+	auto second_gear_renderer = second_gear.assign<lamp::components::renderer>();
+	auto second_gear_position = second_gear.assign<lamp::components::position>();
+	auto second_gear_rotation = second_gear.assign<rotation>();
 	second_gear_rotation->speed = 0.4f;
 
 	second_gear_renderer->shader   = model_shader;
@@ -195,7 +194,7 @@ lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 		v1 /= len;
 
 		// front face
-		normal = glm::vec3(0.0f, 0.0f, 1.0f);
+		normal = lamp::v3(0.0f, 0.0f, 1.0f);
 		vertices.insert(vertices.end(), {
 			r0 * cos_ta,     r0 * sin_ta,     gear.width * 0.5f, normal.x, normal.y, normal.z,
 			r1 * cos_ta,     r1 * sin_ta,     gear.width * 0.5f, normal.x, normal.y, normal.z,
@@ -238,7 +237,7 @@ lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 		});
 
 		// back face
-		normal = glm::vec3(0.0f, 0.0f, -1.0f);
+		normal = lamp::v3(0.0f, 0.0f, -1.0f);
 		vertices.insert(vertices.end(), {
 			r1 * cos_ta,     r1 * sin_ta,     -gear.width * 0.5f, normal.x, normal.y, normal.z,
 			r0 * cos_ta,     r0 * sin_ta,     -gear.width * 0.5f, normal.x, normal.y, normal.z,
@@ -281,7 +280,7 @@ lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 		});
 
 		// draw outward faces of teeth
-		normal = glm::vec3(v1, -u1, 0.0f);
+		normal = lamp::v3(v1, -u1, 0.0f);
 		ix0 = index++; new_vertex(vertices, r1 * cos_ta,     r1 * sin_ta,      gear.width * 0.5f, normal);
 		ix1 = index++; new_vertex(vertices, r1 * cos_ta,     r1 * sin_ta,     -gear.width * 0.5f, normal);
 		ix2 = index++; new_vertex(vertices, r2 * cos_ta_1da, r2 * sin_ta_1da,  gear.width * 0.5f, normal);
@@ -292,7 +291,7 @@ lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 			ix1, ix3, ix2
 		});
 
-		normal = glm::vec3(cos_ta, sin_ta, 0.0f);
+		normal = lamp::v3(cos_ta, sin_ta, 0.0f);
 		ix0 = index++; new_vertex(vertices, r2 * cos_ta_1da, r2 * sin_ta_1da,  gear.width * 0.5f, normal);
 		ix1 = index++; new_vertex(vertices, r2 * cos_ta_1da, r2 * sin_ta_1da, -gear.width * 0.5f, normal);
 		ix2 = index++; new_vertex(vertices, r2 * cos_ta_2da, r2 * sin_ta_2da,  gear.width * 0.5f, normal);
@@ -303,7 +302,7 @@ lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 			ix1, ix3, ix2
 		});
 
-		normal = glm::vec3(v2, -u2, 0.0f);
+		normal = lamp::v3(v2, -u2, 0.0f);
 		ix0 = index++; new_vertex(vertices, r2 * cos_ta_2da, r2 * sin_ta_2da,  gear.width * 0.5f, normal);
 		ix1 = index++; new_vertex(vertices, r2 * cos_ta_2da, r2 * sin_ta_2da, -gear.width * 0.5f, normal);
 		ix2 = index++; new_vertex(vertices, r1 * cos_ta_3da, r1 * sin_ta_3da,  gear.width * 0.5f, normal);
@@ -314,7 +313,7 @@ lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 			ix1, ix3, ix2
 		});
 
-		normal = glm::vec3(cos_ta, sin_ta, 0.0f);
+		normal = lamp::v3(cos_ta, sin_ta, 0.0f);
 		ix0 = index++; new_vertex(vertices, r1 * cos_ta_3da, r1 * sin_ta_3da,  gear.width * 0.5f, normal);
 		ix1 = index++; new_vertex(vertices, r1 * cos_ta_3da, r1 * sin_ta_3da, -gear.width * 0.5f, normal);
 		ix2 = index++; new_vertex(vertices, r1 * cos_ta_4da, r1 * sin_ta_4da,  gear.width * 0.5f, normal);
@@ -340,8 +339,8 @@ lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 	std::cout << "Timer took " << timer.elapsed() << "ms\n";
 
 	lamp::gl::Layout layout;
-	layout.add<float>(3, GL_FLOAT);
-	layout.add<float>(3, GL_FLOAT);
+	layout.add<float>(3);
+	layout.add<float>(3);
 
 	return lamp::Assets::create(vertices, indices, layout, GL_TRIANGLES, GL_UNSIGNED_INT, GL_STATIC_DRAW);
 }
