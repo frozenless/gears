@@ -1,5 +1,8 @@
 #include "gears.hpp"
 
+#include "systems/rotation.hpp"
+#include "components/rotation.hpp"
+
 #include <imgui.h>
 #include <GLFW/glfw3.h>
 
@@ -7,6 +10,7 @@
 
 #include "engine/components/transform.hpp"
 #include "engine/components/renderer.hpp"
+#include "engine/components/position.hpp"
 
 #include "engine/material.hpp"
 #include "engine/camera.hpp"
@@ -15,14 +19,15 @@
 #include "gl/renderer.hpp"
 #include "gl/program.hpp"
 
+#include "common/timer.hpp"
+
 #include "editor.hpp"
 #include "assets.inl"
 
+lamp::gl::mesh_ptr gear_mesh;
+
 lamp::gl::program_ptr model_shader;
 lamp::gl::program_ptr debug_shader;
-
-lamp::material_ptr gear_material;
-lamp::gl::mesh_ptr gear_mesh;
 
 lamp::gl::buffer_ptr camera_buffer;
 lamp::gl::buffer_ptr light_buffer;
@@ -31,35 +36,8 @@ constexpr lamp::v2 size(1024, 768);
 
 lamp::Camera camera(size);
 
-void keyboard_actions(GLFWwindow* ptr, const int key, int, const int action, int)
-{
-	if (action == GLFW_PRESS)
-	{
-		auto gears = static_cast<Gears*>(glfwGetWindowUserPointer(ptr));
-
-		switch (key) {
-			case GLFW_KEY_ESCAPE: {
-				gears->window().close();
-				break;
-			}
-			case GLFW_KEY_E: {
-				gears->toggle_editor();
-				break;
-			}
-			case GLFW_KEY_W: {
-				gears->toggle_wires();
-				break;
-			}
-			default:
-				break;
-		}
-	}
-}
-
 void Gears::init()
 {
-	glfwSetKeyCallback(_window, keyboard_actions);
-
 	auto model_vert = lamp::Assets::create("shaders/glsl/model.vert", GL_VERTEX_SHADER);
 	auto model_frag = lamp::Assets::create("shaders/glsl/model.frag", GL_FRAGMENT_SHADER);
 
@@ -69,14 +47,12 @@ void Gears::init()
 	debug_shader   = lamp::Assets::create(debug_vert,   debug_frag);
 	model_shader   = lamp::Assets::create(model_vert,   model_frag);
 
-	gear_material = std::make_shared<lamp::Material>(lamp::Random::linear(glm::zero<lamp::v3>(), glm::one<lamp::v3>()));
-
 	gear g { };
-	g.inner_radius = 1.0f;
-	g.outer_radius = 4.0f;
-	g.width = 0.5f;
-	g.num_teeth = 20;
-	g.tooth_depth = 0.7f;
+	g.inner_radius = 0.7f;
+	g.outer_radius = 3.0f;
+	g.num_teeth    = 18;
+	g.tooth_depth  = 0.7f;
+	g.width        = 0.5f;
 
 	gear_mesh = add_gear(g);
 
@@ -86,15 +62,37 @@ void Gears::init()
 	_light.diffuse  = 0.9f;
 
 	_ecs.systems.add<lamp::systems::Renderer>();
+	_ecs.systems.add<Rotation>();
 
-	auto gear = _ecs.entities.create();
-	auto gear_renderer  = gear.assign<lamp::components::renderer>();
-	auto gear_transform = gear.assign<lamp::components::transform>();
-	gear_transform->world = glm::identity<lamp::m4>();
+	auto first_gear = _ecs.entities.create();
+	first_gear.assign<lamp::components::transform>();
+	auto first_gear_renderer  = first_gear.assign<lamp::components::renderer>();
+	auto first_gear_position  = first_gear.assign<lamp::components::position>();
+	auto first_gear_rotation  = first_gear.assign<rotation>();
+	first_gear_rotation->speed = 0.4f;
 
-	gear_renderer->shader   = model_shader;
-	gear_renderer->material = gear_material;
-	gear_renderer->mesh     = gear_mesh;
+	first_gear_renderer->shader   = model_shader;
+	first_gear_renderer->material = std::make_shared<lamp::Material>(lamp::Random::linear(glm::zero<lamp::v3>(), glm::one<lamp::v3>()));;
+	first_gear_renderer->mesh     = gear_mesh;
+
+	first_gear_position->x = -3.0f;
+	first_gear_position->y =  0.0f;
+	first_gear_position->z =  0.0f;
+
+	auto second_gear = _ecs.entities.create();
+	second_gear.assign<lamp::components::transform>();
+	auto second_gear_renderer  = second_gear.assign<lamp::components::renderer>();
+	auto second_gear_position  = second_gear.assign<lamp::components::position>();
+	auto second_gear_rotation  = second_gear.assign<rotation>();
+	second_gear_rotation->speed = 0.4f;
+
+	second_gear_renderer->shader   = model_shader;
+	second_gear_renderer->material = std::make_shared<lamp::Material>(lamp::Random::linear(glm::zero<lamp::v3>(), glm::one<lamp::v3>()));;
+	second_gear_renderer->mesh     = gear_mesh;
+
+	second_gear_position->x = 3.0f;
+	second_gear_position->y = 0.0f;
+	second_gear_position->z = 0.0f;
 
 	camera.view(lamp::v3(0.0f, 0.0f, -10.0f));
 	camera.perspective();
@@ -122,6 +120,7 @@ void Gears::release()
 
 void Gears::update(float delta_time)
 {
+	_ecs.systems.update<Rotation>(delta_time);
 }
 
 void Gears::draw()
@@ -143,18 +142,18 @@ void Gears::draw()
 	}
 }
 
-int32_t Gears::new_vertex(std::vector<Vertex> *vBuffer, float x, float y, float z, const glm::vec3& normal)
+void Gears::new_vertex(std::vector<float>& buffer, float x, float y, float z, const glm::vec3& normal)
 {
-	Vertex v(glm::vec3(x, y, z), normal);
-	vBuffer->push_back(v);
-
-	return static_cast<int32_t>(vBuffer->size()) - 1;
+	buffer.insert(buffer.end(), { x, y, z, normal.x, normal.y, normal.z });
 }
 
 lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 {
-	float    u1, v1;
+	lamp::Timer timer;
+
+	float    u1,  v1;
 	uint32_t ix0, ix1, ix2, ix3, ix4, ix5;
+	uint32_t index = 0;
 
 	const float r0 = gear.inner_radius;
 	const float r1 = gear.outer_radius - gear.tooth_depth / 2.0f;
@@ -162,11 +161,11 @@ lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 	const float da = 2.0f * glm::pi<float>() / static_cast<float>(gear.num_teeth) / 4.0f;
 
 	glm::vec3 normal;
-	std::vector<Vertex> vBuffer;
-	vBuffer.reserve(500);
-
-	std::vector<float>  vertices;
+	std::vector<float>    vertices;
 	std::vector<uint32_t> indices;
+
+	vertices.reserve(4000);
+	indices.reserve( 1000);
 
 	for (int i = 0; i < gear.num_teeth; i++) {
 
@@ -184,6 +183,9 @@ lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 		const float sin_ta_3da = sin(ta + 3.0f * da);
 		const float sin_ta_4da = sin(ta + 4.0f * da);
 
+		const float u2 = r1 * cos_ta_3da - r2 * cos_ta_2da;
+		const float v2 = r1 * sin_ta_3da - r2 * sin_ta_2da;
+
 		u1 = r2 * cos_ta_1da - r1 * cos_ta;
 		v1 = r2 * sin_ta_1da - r1 * sin_ta;
 
@@ -192,17 +194,23 @@ lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 		u1 /= len;
 		v1 /= len;
 
-		const float u2 = r1 * cos_ta_3da - r2 * cos_ta_2da;
-		const float v2 = r1 * sin_ta_3da - r2 * sin_ta_2da;
-
 		// front face
 		normal = glm::vec3(0.0f, 0.0f, 1.0f);
-		ix0 = new_vertex(&vBuffer, r0 * cos_ta,     r0 * sin_ta,     gear.width * 0.5f, normal);
-		ix1 = new_vertex(&vBuffer, r1 * cos_ta,     r1 * sin_ta,     gear.width * 0.5f, normal);
-		ix2 = new_vertex(&vBuffer, r0 * cos_ta,     r0 * sin_ta,     gear.width * 0.5f, normal);
-		ix3 = new_vertex(&vBuffer, r1 * cos_ta_3da, r1 * sin_ta_3da, gear.width * 0.5f, normal);
-		ix4 = new_vertex(&vBuffer, r0 * cos_ta_4da, r0 * sin_ta_4da, gear.width * 0.5f, normal);
-		ix5 = new_vertex(&vBuffer, r1 * cos_ta_4da, r1 * sin_ta_4da, gear.width * 0.5f, normal);
+		vertices.insert(vertices.end(), {
+			r0 * cos_ta,     r0 * sin_ta,     gear.width * 0.5f, normal.x, normal.y, normal.z,
+			r1 * cos_ta,     r1 * sin_ta,     gear.width * 0.5f, normal.x, normal.y, normal.z,
+			r0 * cos_ta,     r0 * sin_ta,     gear.width * 0.5f, normal.x, normal.y, normal.z,
+			r1 * cos_ta_3da, r1 * sin_ta_3da, gear.width * 0.5f, normal.x, normal.y, normal.z,
+			r0 * cos_ta_4da, r0 * sin_ta_4da, gear.width * 0.5f, normal.x, normal.y, normal.z,
+			r1 * cos_ta_4da, r1 * sin_ta_4da, gear.width * 0.5f, normal.x, normal.y, normal.z
+		});
+
+		ix0 = index++;
+		ix1 = index++;
+		ix2 = index++;
+		ix3 = index++;
+		ix4 = index++;
+		ix5 = index++;
 
 		indices.insert(indices.end(), {
 			ix0, ix1, ix2,
@@ -212,10 +220,17 @@ lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 		});
 
 		// front sides of teeth
-		ix0 = new_vertex(&vBuffer, r1 * cos_ta,     r1 * sin_ta,     gear.width * 0.5f, normal);
-		ix1 = new_vertex(&vBuffer, r2 * cos_ta_1da, r2 * sin_ta_1da, gear.width * 0.5f, normal);
-		ix2 = new_vertex(&vBuffer, r1 * cos_ta_3da, r1 * sin_ta_3da, gear.width * 0.5f, normal);
-		ix3 = new_vertex(&vBuffer, r2 * cos_ta_2da, r2 * sin_ta_2da, gear.width * 0.5f, normal);
+		vertices.insert(vertices.end(), {
+			r1 * cos_ta,     r1 * sin_ta,     gear.width * 0.5f, normal.x, normal.y, normal.z,
+			r2 * cos_ta_1da, r2 * sin_ta_1da, gear.width * 0.5f, normal.x, normal.y, normal.z,
+			r1 * cos_ta_3da, r1 * sin_ta_3da, gear.width * 0.5f, normal.x, normal.y, normal.z,
+			r2 * cos_ta_2da, r2 * sin_ta_2da, gear.width * 0.5f, normal.x, normal.y, normal.z
+		});
+
+		ix0 = index++;
+		ix1 = index++;
+		ix2 = index++;
+		ix3 = index++;
 
 		indices.insert(indices.end(), {
 			ix0, ix1, ix2,
@@ -224,12 +239,21 @@ lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 
 		// back face
 		normal = glm::vec3(0.0f, 0.0f, -1.0f);
-		ix0 = new_vertex(&vBuffer, r1 * cos_ta,     r1 * sin_ta, -gear.width * 0.5f, normal);
-		ix1 = new_vertex(&vBuffer, r0 * cos_ta,     r0 * sin_ta, -gear.width * 0.5f, normal);
-		ix2 = new_vertex(&vBuffer, r1 * cos_ta_3da, r1 * sin_ta_3da, -gear.width * 0.5f, normal);
-		ix3 = new_vertex(&vBuffer, r0 * cos_ta,     r0 * sin_ta, -gear.width * 0.5f, normal);
-		ix4 = new_vertex(&vBuffer, r1 * cos_ta_4da, r1 * sin_ta_4da, -gear.width * 0.5f, normal);
-		ix5 = new_vertex(&vBuffer, r0 * cos_ta_4da, r0 * sin_ta_4da, -gear.width * 0.5f, normal);
+		vertices.insert(vertices.end(), {
+			r1 * cos_ta,     r1 * sin_ta,     -gear.width * 0.5f, normal.x, normal.y, normal.z,
+			r0 * cos_ta,     r0 * sin_ta,     -gear.width * 0.5f, normal.x, normal.y, normal.z,
+			r1 * cos_ta_3da, r1 * sin_ta_3da, -gear.width * 0.5f, normal.x, normal.y, normal.z,
+			r0 * cos_ta,     r0 * sin_ta,     -gear.width * 0.5f, normal.x, normal.y, normal.z,
+			r1 * cos_ta_4da, r1 * sin_ta_4da, -gear.width * 0.5f, normal.x, normal.y, normal.z,
+			r0 * cos_ta_4da, r0 * sin_ta_4da, -gear.width * 0.5f, normal.x, normal.y, normal.z
+		});
+
+		ix0 = index++;
+		ix1 = index++;
+		ix2 = index++;
+		ix3 = index++;
+		ix4 = index++;
+		ix5 = index++;
 
 		indices.insert(indices.end(), {
 			ix0, ix1, ix2,
@@ -239,10 +263,17 @@ lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 		});
 
 		// back sides of teeth
-		ix0 = new_vertex(&vBuffer, r1 * cos_ta_3da, r1 * sin_ta_3da, -gear.width * 0.5f, normal);
-		ix1 = new_vertex(&vBuffer, r2 * cos_ta_2da, r2 * sin_ta_2da, -gear.width * 0.5f, normal);
-		ix2 = new_vertex(&vBuffer, r1 * cos_ta, r1 * sin_ta, -gear.width * 0.5f, normal);
-		ix3 = new_vertex(&vBuffer, r2 * cos_ta_1da, r2 * sin_ta_1da, -gear.width * 0.5f, normal);
+		vertices.insert(vertices.end(), {
+			r1 * cos_ta_3da, r1 * sin_ta_3da, -gear.width * 0.5f, normal.x, normal.y, normal.z,
+			r2 * cos_ta_2da, r2 * sin_ta_2da, -gear.width * 0.5f, normal.x, normal.y, normal.z,
+			r1 * cos_ta,     r1 * sin_ta,     -gear.width * 0.5f, normal.x, normal.y, normal.z,
+			r2 * cos_ta_1da, r2 * sin_ta_1da, -gear.width * 0.5f, normal.x, normal.y, normal.z
+		});
+
+		ix0 = index++;
+		ix1 = index++;
+		ix2 = index++;
+		ix3 = index++;
 
 		indices.insert(indices.end(), {
 			ix0, ix1, ix2,
@@ -251,10 +282,10 @@ lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 
 		// draw outward faces of teeth
 		normal = glm::vec3(v1, -u1, 0.0f);
-		ix0 = new_vertex(&vBuffer, r1 * cos_ta, r1 * sin_ta, gear.width * 0.5f, normal);
-		ix1 = new_vertex(&vBuffer, r1 * cos_ta, r1 * sin_ta, -gear.width * 0.5f, normal);
-		ix2 = new_vertex(&vBuffer, r2 * cos_ta_1da, r2 * sin_ta_1da, gear.width * 0.5f, normal);
-		ix3 = new_vertex(&vBuffer, r2 * cos_ta_1da, r2 * sin_ta_1da, -gear.width * 0.5f, normal);
+		ix0 = index++; new_vertex(vertices, r1 * cos_ta,     r1 * sin_ta,      gear.width * 0.5f, normal);
+		ix1 = index++; new_vertex(vertices, r1 * cos_ta,     r1 * sin_ta,     -gear.width * 0.5f, normal);
+		ix2 = index++; new_vertex(vertices, r2 * cos_ta_1da, r2 * sin_ta_1da,  gear.width * 0.5f, normal);
+		ix3 = index++; new_vertex(vertices, r2 * cos_ta_1da, r2 * sin_ta_1da, -gear.width * 0.5f, normal);
 
 		indices.insert(indices.end(), {
 			ix0, ix1, ix2,
@@ -262,10 +293,10 @@ lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 		});
 
 		normal = glm::vec3(cos_ta, sin_ta, 0.0f);
-		ix0 = new_vertex(&vBuffer, r2 * cos_ta_1da, r2 * sin_ta_1da, gear.width * 0.5f, normal);
-		ix1 = new_vertex(&vBuffer, r2 * cos_ta_1da, r2 * sin_ta_1da, -gear.width * 0.5f, normal);
-		ix2 = new_vertex(&vBuffer, r2 * cos_ta_2da, r2 * sin_ta_2da, gear.width * 0.5f, normal);
-		ix3 = new_vertex(&vBuffer, r2 * cos_ta_2da, r2 * sin_ta_2da, -gear.width * 0.5f, normal);
+		ix0 = index++; new_vertex(vertices, r2 * cos_ta_1da, r2 * sin_ta_1da,  gear.width * 0.5f, normal);
+		ix1 = index++; new_vertex(vertices, r2 * cos_ta_1da, r2 * sin_ta_1da, -gear.width * 0.5f, normal);
+		ix2 = index++; new_vertex(vertices, r2 * cos_ta_2da, r2 * sin_ta_2da,  gear.width * 0.5f, normal);
+		ix3 = index++; new_vertex(vertices, r2 * cos_ta_2da, r2 * sin_ta_2da, -gear.width * 0.5f, normal);
 
 		indices.insert(indices.end(), {
 			ix0, ix1, ix2,
@@ -273,10 +304,10 @@ lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 		});
 
 		normal = glm::vec3(v2, -u2, 0.0f);
-		ix0 = new_vertex(&vBuffer, r2 * cos_ta_2da, r2 * sin_ta_2da, gear.width * 0.5f, normal);
-		ix1 = new_vertex(&vBuffer, r2 * cos_ta_2da, r2 * sin_ta_2da, -gear.width * 0.5f, normal);
-		ix2 = new_vertex(&vBuffer, r1 * cos_ta_3da, r1 * sin_ta_3da, gear.width * 0.5f, normal);
-		ix3 = new_vertex(&vBuffer, r1 * cos_ta_3da, r1 * sin_ta_3da, -gear.width * 0.5f, normal);
+		ix0 = index++; new_vertex(vertices, r2 * cos_ta_2da, r2 * sin_ta_2da,  gear.width * 0.5f, normal);
+		ix1 = index++; new_vertex(vertices, r2 * cos_ta_2da, r2 * sin_ta_2da, -gear.width * 0.5f, normal);
+		ix2 = index++; new_vertex(vertices, r1 * cos_ta_3da, r1 * sin_ta_3da,  gear.width * 0.5f, normal);
+		ix3 = index++; new_vertex(vertices, r1 * cos_ta_3da, r1 * sin_ta_3da, -gear.width * 0.5f, normal);
 
 		indices.insert(indices.end(), {
 			ix0, ix1, ix2,
@@ -284,10 +315,10 @@ lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 		});
 
 		normal = glm::vec3(cos_ta, sin_ta, 0.0f);
-		ix0 = new_vertex(&vBuffer, r1 * cos_ta_3da, r1 * sin_ta_3da, gear.width * 0.5f, normal);
-		ix1 = new_vertex(&vBuffer, r1 * cos_ta_3da, r1 * sin_ta_3da, -gear.width * 0.5f, normal);
-		ix2 = new_vertex(&vBuffer, r1 * cos_ta_4da, r1 * sin_ta_4da, gear.width * 0.5f, normal);
-		ix3 = new_vertex(&vBuffer, r1 * cos_ta_4da, r1 * sin_ta_4da, -gear.width * 0.5f, normal);
+		ix0 = index++; new_vertex(vertices, r1 * cos_ta_3da, r1 * sin_ta_3da,  gear.width * 0.5f, normal);
+		ix1 = index++; new_vertex(vertices, r1 * cos_ta_3da, r1 * sin_ta_3da, -gear.width * 0.5f, normal);
+		ix2 = index++; new_vertex(vertices, r1 * cos_ta_4da, r1 * sin_ta_4da,  gear.width * 0.5f, normal);
+		ix3 = index++; new_vertex(vertices, r1 * cos_ta_4da, r1 * sin_ta_4da, -gear.width * 0.5f, normal);
 
 		indices.insert(indices.end(), {
 			ix0, ix1, ix2,
@@ -295,10 +326,10 @@ lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 		});
 
 		// draw inside radius cylinder
-		ix0 = new_vertex(&vBuffer, r0 * cos_ta, r0 * sin_ta, -gear.width * 0.5f, glm::vec3(-cos_ta, -sin_ta, 0.0f));
-		ix1 = new_vertex(&vBuffer, r0 * cos_ta, r0 * sin_ta, gear.width * 0.5f, glm::vec3(-cos_ta, -sin_ta, 0.0f));
-		ix2 = new_vertex(&vBuffer, r0 * cos_ta_4da, r0 * sin_ta_4da, -gear.width * 0.5f, glm::vec3(-cos_ta_4da, -sin_ta_4da, 0.0f));
-		ix3 = new_vertex(&vBuffer, r0 * cos_ta_4da, r0 * sin_ta_4da, gear.width * 0.5f, glm::vec3(-cos_ta_4da, -sin_ta_4da, 0.0f));
+		ix0 = index++; new_vertex(vertices, r0 * cos_ta,     r0 * sin_ta,     -gear.width * 0.5f, glm::vec3(-cos_ta,     -sin_ta,     0.0f));
+		ix1 = index++; new_vertex(vertices, r0 * cos_ta,     r0 * sin_ta,      gear.width * 0.5f, glm::vec3(-cos_ta,     -sin_ta,     0.0f));
+		ix2 = index++; new_vertex(vertices, r0 * cos_ta_4da, r0 * sin_ta_4da, -gear.width * 0.5f, glm::vec3(-cos_ta_4da, -sin_ta_4da, 0.0f));
+		ix3 = index++; new_vertex(vertices, r0 * cos_ta_4da, r0 * sin_ta_4da,  gear.width * 0.5f, glm::vec3(-cos_ta_4da, -sin_ta_4da, 0.0f));
 
 		indices.insert(indices.end(), {
 			ix0, ix1, ix2,
@@ -306,11 +337,7 @@ lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 		});
 	}
 
-	vertices.reserve(4000);
-
-	for (auto v : vBuffer) {
-		vertices.insert(vertices.end(), { v.pos.x, v.pos.y, v.pos.z, v.normal.x, v.normal.y, v.normal.z });
-	}
+	std::cout << "Timer took " << timer.elapsed() << "ms\n";
 
 	lamp::gl::Layout layout;
 	layout.add<float>(3, GL_FLOAT);

@@ -25,7 +25,7 @@ protected:
 	void draw() final;
 
 public:
-	static int32_t new_vertex(std::vector<Vertex>* vBuffer, float x, float y, float z, const glm::vec3& normal);
+	static void new_vertex(std::vector<float>& buffer, float x, float y, float z, const glm::vec3& normal);
 
 	lamp::gl::mesh_ptr add_gear(const gear& gear);
 };
