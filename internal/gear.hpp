@@ -9,4 +9,6 @@ struct gear
 
 	float   tooth_depth;
 	int32_t num_teeth;
+
+	lamp::v3 position;
 };

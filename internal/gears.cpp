@@ -19,6 +19,7 @@
 #include "editor.hpp"
 #include "assets.inl"
 
+#include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
 
 lamp::gl::mesh_ptr gear_mesh;
@@ -44,14 +45,11 @@ void Gears::init()
 	debug_shader = lamp::Assets::create(debug_vert, debug_frag);
 	model_shader = lamp::Assets::create(model_vert, model_frag);
 
-	gear g { };
-	g.inner_radius = 0.7f;
-	g.outer_radius = 3.0f;
-	g.num_teeth    = 18;
-	g.tooth_depth  = 0.7f;
-	g.width        = 0.5f;
-
-	gear_mesh = add_gear(g);
+	_gear.inner_radius = 0.7f;
+	_gear.outer_radius = 3.0f;
+	_gear.num_teeth    = 18;
+	_gear.tooth_depth  = 0.7f;
+	_gear.width        = 0.5f;
 
 	_light.color    = lamp::rgb(1.0f);
 	_light.position = lamp::v3( 10.0f, 10.0f, 15.0f);
@@ -60,36 +58,6 @@ void Gears::init()
 
 	_ecs.systems.add<lamp::systems::Renderer>();
 	_ecs.systems.add<Rotation>();
-
-	auto first_gear = _ecs.entities.create();
-	first_gear.assign<lamp::components::transform>();
-	auto first_gear_renderer = first_gear.assign<lamp::components::renderer>();
-	auto first_gear_position = first_gear.assign<lamp::components::position>();
-	auto first_gear_rotation = first_gear.assign<rotation>();
-	first_gear_rotation->speed = 0.4f;
-
-	first_gear_renderer->shader   = model_shader;
-	first_gear_renderer->material = std::make_shared<lamp::Material>(lamp::Random::linear(glm::zero<lamp::v3>(), glm::one<lamp::v3>()));;
-	first_gear_renderer->mesh     = gear_mesh;
-
-	first_gear_position->x = -3.0f;
-	first_gear_position->y =  0.0f;
-	first_gear_position->z =  0.0f;
-
-	auto second_gear = _ecs.entities.create();
-	second_gear.assign<lamp::components::transform>();
-	auto second_gear_renderer = second_gear.assign<lamp::components::renderer>();
-	auto second_gear_position = second_gear.assign<lamp::components::position>();
-	auto second_gear_rotation = second_gear.assign<rotation>();
-	second_gear_rotation->speed = 0.4f;
-
-	second_gear_renderer->shader   = model_shader;
-	second_gear_renderer->material = std::make_shared<lamp::Material>(lamp::Random::linear(glm::zero<lamp::v3>(), glm::one<lamp::v3>()));;
-	second_gear_renderer->mesh     = gear_mesh;
-
-	second_gear_position->x = 3.0f;
-	second_gear_position->y = 0.0f;
-	second_gear_position->z = 0.0f;
 
 	camera.view(lamp::v3(0.0f, 0.0f, -10.0f));
 	camera.perspective();
@@ -126,20 +94,43 @@ void Gears::draw()
 
 	_ecs.systems.update<lamp::systems::Renderer>(0);
 
+	lamp::Editor::begin();
+
 	if (_show_editor)
 	{
-		lamp::Editor::begin();
-
 		lamp::Editor::draw(_light);
-
-		lamp::Editor::end();
 
 		std::vector<lamp::components::light> light_uniforms = { _light };
 		light_buffer->set_data(light_uniforms);
 	}
+
+	ImGui::Begin("Gear");
+	ImGui::InputFloat3("Position", glm::value_ptr(_gear.position), 1);
+
+	if (ImGui::Button("Create")) {
+
+		auto gear = _ecs.entities.create();
+		auto gear_renderer = gear.assign<lamp::components::renderer>();
+		auto gear_position = gear.assign<lamp::components::position>();
+		auto gear_rotation = gear.assign<rotation>();
+		gear.assign<lamp::components::transform>();
+		gear_rotation->speed = 0.4f;
+
+		gear_renderer->shader   = model_shader;
+		gear_renderer->material = std::make_shared<lamp::Material>(lamp::Random::linear(glm::zero<lamp::v3>(), glm::one<lamp::v3>()));;
+		gear_renderer->mesh     = create(_gear);
+
+		gear_position->x = _gear.position.x;
+		gear_position->y = _gear.position.y;
+		gear_position->z = _gear.position.z;
+	}
+
+	ImGui::End();
+
+	lamp::Editor::end();
 }
 
-lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
+lamp::gl::mesh_ptr Gears::create(const gear& gear)
 {
 	uint32_t index = 0;
 
