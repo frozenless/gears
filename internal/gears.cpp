@@ -148,8 +148,6 @@ void Gears::new_vertex(std::vector<float>& buffer, float x, float y, float z, co
 
 lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 {
-	lamp::Timer timer;
-
 	float    u1,  v1;
 	uint32_t ix0, ix1, ix2, ix3, ix4, ix5;
 	uint32_t index = 0;
@@ -335,8 +333,6 @@ lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 			ix1, ix3, ix2
 		});
 	}
-
-	std::cout << "Timer took " << timer.elapsed() << "ms\n";
 
 	lamp::gl::Layout layout;
 	layout.add<float>(3);
