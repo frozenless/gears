@@ -6,7 +6,7 @@
 
 #include "components/rotation.hpp"
 
-void Rotation::update(entityx::EntityManager &es, entityx::EventManager &, entityx::TimeDelta dt)
+void Rotation::update(entityx::EntityManager& es, entityx::EventManager&, entityx::TimeDelta dt)
 {
 	es.each<lamp::components::transform, lamp::components::position, rotation>([](entityx::Entity,
             lamp::components::transform& transform, lamp::components::position& position, rotation& rotation) {

@@ -16,8 +16,6 @@
 #include "gl/renderer.hpp"
 #include "gl/program.hpp"
 
-#include "common/timer.hpp"
-
 #include "editor.hpp"
 #include "assets.inl"
 
@@ -141,30 +139,21 @@ void Gears::draw()
 	}
 }
 
-void Gears::new_vertex(std::vector<float>& buffer, float x, float y, float z, const glm::vec3& normal)
-{
-	buffer.insert(buffer.end(), { x, y, z, normal.x, normal.y, normal.z });
-}
-
 lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 {
-	float    u1,  v1;
-	uint32_t ix0, ix1, ix2, ix3, ix4, ix5;
 	uint32_t index = 0;
+
+	std::vector<lamp::v3> vertices;
+	std::vector<uint32_t> indices;
 
 	const float r0 = gear.inner_radius;
 	const float r1 = gear.outer_radius - gear.tooth_depth / 2.0f;
 	const float r2 = gear.outer_radius + gear.tooth_depth / 2.0f;
 	const float da = 2.0f * glm::pi<float>() / static_cast<float>(gear.num_teeth) / 4.0f;
 
-	glm::vec3 normal;
-	std::vector<float>    vertices;
-	std::vector<uint32_t> indices;
+	const float half = gear.width * 0.5f;
 
-	vertices.reserve(4000);
-	indices.reserve( 1000);
-
-	for (int i = 0; i < gear.num_teeth; i++) {
+	for (int32_t i = 0; i < gear.num_teeth; i++) {
 
 		const float ta = static_cast<float>(i) * 2.0f * glm::pi<float>() / static_cast<float>(gear.num_teeth);
 
@@ -183,162 +172,148 @@ lamp::gl::mesh_ptr Gears::add_gear(const gear& gear)
 		const float u2 = r1 * cos_ta_3da - r2 * cos_ta_2da;
 		const float v2 = r1 * sin_ta_3da - r2 * sin_ta_2da;
 
-		u1 = r2 * cos_ta_1da - r1 * cos_ta;
-		v1 = r2 * sin_ta_1da - r1 * sin_ta;
+		float u1 = r2 * cos_ta_1da - r1 * cos_ta;
+		float v1 = r2 * sin_ta_1da - r1 * sin_ta;
 
-		const float len = sqrt(u1 * u1 + v1 * v1);
+		const float len = std::sqrt(u1 * u1 + v1 * v1);
 
 		u1 /= len;
 		v1 /= len;
 
 		// front face
-		normal = lamp::v3(0.0f, 0.0f, 1.0f);
+		lamp::v3 normal = lamp::v3(0.0f, 0.0f, 1.0f);
 		vertices.insert(vertices.end(), {
-			r0 * cos_ta,     r0 * sin_ta,     gear.width * 0.5f, normal.x, normal.y, normal.z,
-			r1 * cos_ta,     r1 * sin_ta,     gear.width * 0.5f, normal.x, normal.y, normal.z,
-			r0 * cos_ta,     r0 * sin_ta,     gear.width * 0.5f, normal.x, normal.y, normal.z,
-			r1 * cos_ta_3da, r1 * sin_ta_3da, gear.width * 0.5f, normal.x, normal.y, normal.z,
-			r0 * cos_ta_4da, r0 * sin_ta_4da, gear.width * 0.5f, normal.x, normal.y, normal.z,
-			r1 * cos_ta_4da, r1 * sin_ta_4da, gear.width * 0.5f, normal.x, normal.y, normal.z
+			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     half), normal,
+			lamp::v3(r1 * cos_ta,     r1 * sin_ta,     half), normal,
+			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     half), normal,
+			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, half), normal,
+			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, half), normal,
+			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, half), normal
 		});
-
-		ix0 = index++;
-		ix1 = index++;
-		ix2 = index++;
-		ix3 = index++;
-		ix4 = index++;
-		ix5 = index++;
 
 		indices.insert(indices.end(), {
-			ix0, ix1, ix2,
-			ix1, ix3, ix2,
-			ix2, ix3, ix4,
-			ix3, ix5, ix4
-		});
+			index,     index + 1, index + 2,
+			index + 1, index + 3, index + 2,
+			index + 2, index + 3, index + 4,
+			index + 3, index + 5, index + 4
+		}); index += 6;
 
 		// front sides of teeth
 		vertices.insert(vertices.end(), {
-			r1 * cos_ta,     r1 * sin_ta,     gear.width * 0.5f, normal.x, normal.y, normal.z,
-			r2 * cos_ta_1da, r2 * sin_ta_1da, gear.width * 0.5f, normal.x, normal.y, normal.z,
-			r1 * cos_ta_3da, r1 * sin_ta_3da, gear.width * 0.5f, normal.x, normal.y, normal.z,
-			r2 * cos_ta_2da, r2 * sin_ta_2da, gear.width * 0.5f, normal.x, normal.y, normal.z
+			lamp::v3(r1 * cos_ta,     r1 * sin_ta,     half), normal,
+			lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, half), normal,
+			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, half), normal,
+			lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, half), normal
 		});
-
-		ix0 = index++;
-		ix1 = index++;
-		ix2 = index++;
-		ix3 = index++;
 
 		indices.insert(indices.end(), {
-			ix0, ix1, ix2,
-			ix1, ix3, ix2
-		});
+			index,     index + 1, index + 2,
+			index + 1, index + 3, index + 2
+		}); index += 4;
 
 		// back face
 		normal = lamp::v3(0.0f, 0.0f, -1.0f);
 		vertices.insert(vertices.end(), {
-			r1 * cos_ta,     r1 * sin_ta,     -gear.width * 0.5f, normal.x, normal.y, normal.z,
-			r0 * cos_ta,     r0 * sin_ta,     -gear.width * 0.5f, normal.x, normal.y, normal.z,
-			r1 * cos_ta_3da, r1 * sin_ta_3da, -gear.width * 0.5f, normal.x, normal.y, normal.z,
-			r0 * cos_ta,     r0 * sin_ta,     -gear.width * 0.5f, normal.x, normal.y, normal.z,
-			r1 * cos_ta_4da, r1 * sin_ta_4da, -gear.width * 0.5f, normal.x, normal.y, normal.z,
-			r0 * cos_ta_4da, r0 * sin_ta_4da, -gear.width * 0.5f, normal.x, normal.y, normal.z
+			lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -half), normal,
+			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -half), normal,
+			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half), normal,
+			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -half), normal,
+			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, -half), normal,
+			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -half), normal
 		});
-
-		ix0 = index++;
-		ix1 = index++;
-		ix2 = index++;
-		ix3 = index++;
-		ix4 = index++;
-		ix5 = index++;
 
 		indices.insert(indices.end(), {
-			ix0, ix1, ix2,
-			ix1, ix3, ix2,
-			ix2, ix3, ix4,
-			ix3, ix5, ix4
-		});
+			index,     index + 1, index + 2,
+			index + 1, index + 3, index + 2,
+			index + 2, index + 3, index + 4,
+			index + 3, index + 5, index + 4
+		}); index += 6;
 
 		// back sides of teeth
 		vertices.insert(vertices.end(), {
-			r1 * cos_ta_3da, r1 * sin_ta_3da, -gear.width * 0.5f, normal.x, normal.y, normal.z,
-			r2 * cos_ta_2da, r2 * sin_ta_2da, -gear.width * 0.5f, normal.x, normal.y, normal.z,
-			r1 * cos_ta,     r1 * sin_ta,     -gear.width * 0.5f, normal.x, normal.y, normal.z,
-			r2 * cos_ta_1da, r2 * sin_ta_1da, -gear.width * 0.5f, normal.x, normal.y, normal.z
+			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half), normal,
+			lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -half), normal,
+			lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -half), normal,
+			lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -half), normal
 		});
-
-		ix0 = index++;
-		ix1 = index++;
-		ix2 = index++;
-		ix3 = index++;
 
 		indices.insert(indices.end(), {
-			ix0, ix1, ix2,
-			ix1, ix3, ix2
-		});
+			index,     index + 1, index + 2,
+			index + 1, index + 3, index + 2
+		}); index += 4;
 
 		// draw outward faces of teeth
 		normal = lamp::v3(v1, -u1, 0.0f);
-		ix0 = index++; new_vertex(vertices, r1 * cos_ta,     r1 * sin_ta,      gear.width * 0.5f, normal);
-		ix1 = index++; new_vertex(vertices, r1 * cos_ta,     r1 * sin_ta,     -gear.width * 0.5f, normal);
-		ix2 = index++; new_vertex(vertices, r2 * cos_ta_1da, r2 * sin_ta_1da,  gear.width * 0.5f, normal);
-		ix3 = index++; new_vertex(vertices, r2 * cos_ta_1da, r2 * sin_ta_1da, -gear.width * 0.5f, normal);
+		vertices.insert(vertices.end(), {
+			lamp::v3(r1 * cos_ta,     r1 * sin_ta,      half), normal,
+			lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -half), normal,
+			lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da,  half), normal,
+			lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -half), normal
+		});
 
 		indices.insert(indices.end(), {
-			ix0, ix1, ix2,
-			ix1, ix3, ix2
-		});
+			index,     index + 1, index + 2,
+			index + 1, index + 3, index + 2
+		}); index += 4;
 
 		normal = lamp::v3(cos_ta, sin_ta, 0.0f);
-		ix0 = index++; new_vertex(vertices, r2 * cos_ta_1da, r2 * sin_ta_1da,  gear.width * 0.5f, normal);
-		ix1 = index++; new_vertex(vertices, r2 * cos_ta_1da, r2 * sin_ta_1da, -gear.width * 0.5f, normal);
-		ix2 = index++; new_vertex(vertices, r2 * cos_ta_2da, r2 * sin_ta_2da,  gear.width * 0.5f, normal);
-		ix3 = index++; new_vertex(vertices, r2 * cos_ta_2da, r2 * sin_ta_2da, -gear.width * 0.5f, normal);
+		vertices.insert(vertices.end(), {
+			lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da,  half), normal,
+			lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -half), normal,
+			lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da,  half), normal,
+			lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -half), normal
+		});
 
 		indices.insert(indices.end(), {
-			ix0, ix1, ix2,
-			ix1, ix3, ix2
-		});
+			index,     index + 1, index + 2,
+			index + 1, index + 3, index + 2
+		}); index += 4;
 
 		normal = lamp::v3(v2, -u2, 0.0f);
-		ix0 = index++; new_vertex(vertices, r2 * cos_ta_2da, r2 * sin_ta_2da,  gear.width * 0.5f, normal);
-		ix1 = index++; new_vertex(vertices, r2 * cos_ta_2da, r2 * sin_ta_2da, -gear.width * 0.5f, normal);
-		ix2 = index++; new_vertex(vertices, r1 * cos_ta_3da, r1 * sin_ta_3da,  gear.width * 0.5f, normal);
-		ix3 = index++; new_vertex(vertices, r1 * cos_ta_3da, r1 * sin_ta_3da, -gear.width * 0.5f, normal);
+		vertices.insert(vertices.end(), {
+			lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da,  half), normal,
+			lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -half), normal,
+			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da,  half), normal,
+			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half), normal
+		});
 
 		indices.insert(indices.end(), {
-			ix0, ix1, ix2,
-			ix1, ix3, ix2
-		});
+			index,     index + 1, index + 2,
+			index + 1, index + 3, index + 2
+		}); index += 4;
 
 		normal = lamp::v3(cos_ta, sin_ta, 0.0f);
-		ix0 = index++; new_vertex(vertices, r1 * cos_ta_3da, r1 * sin_ta_3da,  gear.width * 0.5f, normal);
-		ix1 = index++; new_vertex(vertices, r1 * cos_ta_3da, r1 * sin_ta_3da, -gear.width * 0.5f, normal);
-		ix2 = index++; new_vertex(vertices, r1 * cos_ta_4da, r1 * sin_ta_4da,  gear.width * 0.5f, normal);
-		ix3 = index++; new_vertex(vertices, r1 * cos_ta_4da, r1 * sin_ta_4da, -gear.width * 0.5f, normal);
+		vertices.insert(vertices.end(), {
+			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da,  half), normal,
+			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half), normal,
+			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da,  half), normal,
+			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, -half), normal
+		});
 
 		indices.insert(indices.end(), {
-			ix0, ix1, ix2,
-			ix1, ix3, ix2
-		});
+			index,     index + 1, index + 2,
+			index + 1, index + 3, index + 2
+		}); index += 4;
 
 		// draw inside radius cylinder
-		ix0 = index++; new_vertex(vertices, r0 * cos_ta,     r0 * sin_ta,     -gear.width * 0.5f, glm::vec3(-cos_ta,     -sin_ta,     0.0f));
-		ix1 = index++; new_vertex(vertices, r0 * cos_ta,     r0 * sin_ta,      gear.width * 0.5f, glm::vec3(-cos_ta,     -sin_ta,     0.0f));
-		ix2 = index++; new_vertex(vertices, r0 * cos_ta_4da, r0 * sin_ta_4da, -gear.width * 0.5f, glm::vec3(-cos_ta_4da, -sin_ta_4da, 0.0f));
-		ix3 = index++; new_vertex(vertices, r0 * cos_ta_4da, r0 * sin_ta_4da,  gear.width * 0.5f, glm::vec3(-cos_ta_4da, -sin_ta_4da, 0.0f));
+		vertices.insert(vertices.end(), {
+			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -half), lamp::v3(-cos_ta,     -sin_ta,     0.0f),
+			lamp::v3(r0 * cos_ta,     r0 * sin_ta,      half), lamp::v3(-cos_ta,     -sin_ta,     0.0f),
+			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -half), lamp::v3(-cos_ta_4da, -sin_ta_4da, 0.0f),
+			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da,  half), lamp::v3(-cos_ta_4da, -sin_ta_4da, 0.0f)
+		});
 
 		indices.insert(indices.end(), {
-			ix0, ix1, ix2,
-			ix1, ix3, ix2
-		});
+			index,     index + 1, index + 2,
+			index + 1, index + 3, index + 2
+		}); index += 4;
 	}
 
 	lamp::gl::Layout layout;
 	layout.add<float>(3);
 	layout.add<float>(3);
 
-	return lamp::Assets::create(vertices, indices, layout, GL_TRIANGLES, GL_UNSIGNED_INT, GL_STATIC_DRAW);
+	return lamp::Assets::create(vertices, indices, layout, GL_TRIANGLES, GL_STATIC_DRAW);
 }
 
 int main()

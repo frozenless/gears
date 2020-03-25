@@ -7,6 +7,6 @@ struct gear
 	float inner_radius;
 	float outer_radius;
 
-	float tooth_depth;
-	int   num_teeth;
+	float   tooth_depth;
+	int32_t num_teeth;
 };
