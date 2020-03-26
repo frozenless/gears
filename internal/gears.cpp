@@ -112,9 +112,8 @@ void Gears::draw()
 		auto gear = _ecs.entities.create();
 		auto gear_renderer = gear.assign<lamp::components::renderer>();
 		auto gear_position = gear.assign<lamp::components::position>();
-		auto gear_rotation = gear.assign<rotation>();
 		gear.assign<lamp::components::transform>();
-		gear_rotation->speed = 0.4f;
+		gear.assign<rotation>()->speed = 0.4f;
 
 		gear_renderer->shader   = model_shader;
 		gear_renderer->material = std::make_shared<lamp::Material>(lamp::Random::linear(glm::zero<lamp::v3>(), glm::one<lamp::v3>()));;
