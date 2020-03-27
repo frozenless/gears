@@ -13,8 +13,8 @@ protected:
 	void draw() final;
 
 public:
-	static lamp::gl::mesh_ptr create(const gear& gear);
+	static lamp::gl::mesh_ptr create(const Gear& gear);
 
 private:
-	gear _gear;
+	Gear _gear;
 };

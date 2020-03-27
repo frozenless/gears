@@ -1,6 +1,6 @@
 #pragma once
 
-struct gear
+struct Gear
 {
 	float width;
 

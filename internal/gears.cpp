@@ -22,8 +22,6 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
 
-lamp::gl::mesh_ptr gear_mesh;
-
 lamp::gl::program_ptr model_shader;
 lamp::gl::program_ptr debug_shader;
 
@@ -133,7 +131,7 @@ void Gears::draw()
 	lamp::Editor::end();
 }
 
-lamp::gl::mesh_ptr Gears::create(const gear& gear)
+lamp::gl::mesh_ptr Gears::create(const Gear& gear)
 {
 	uint32_t index = 0;
 
