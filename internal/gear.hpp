@@ -8,7 +8,7 @@ struct gear
 	float outer_radius;
 
 	float   tooth_depth;
-	int32_t num_teeth;
+	int32_t teeth;
 
 	lamp::v3 position;
 };

@@ -30,7 +30,7 @@ lamp::gl::program_ptr debug_shader;
 lamp::gl::buffer_ptr camera_buffer;
 lamp::gl::buffer_ptr light_buffer;
 
-constexpr lamp::v2 size(1024, 768);
+constexpr lamp::v2 size(1280, 768);
 
 lamp::Camera camera(size);
 
@@ -47,7 +47,7 @@ void Gears::init()
 
 	_gear.inner_radius = 0.7f;
 	_gear.outer_radius = 3.0f;
-	_gear.num_teeth    = 18;
+	_gear.teeth        = 18;
 	_gear.tooth_depth  = 0.7f;
 	_gear.width        = 0.5f;
 
@@ -106,6 +106,10 @@ void Gears::draw()
 
 	ImGui::Begin("Gear");
 	ImGui::InputFloat3("Position", glm::value_ptr(_gear.position), 1);
+	ImGui::InputFloat("Outer Radius", &_gear.outer_radius, 0.1f);
+	ImGui::InputFloat("Inner Radius", &_gear.inner_radius, 0.1f);
+
+	ImGui::InputInt("Teeth", &_gear.teeth, 1);
 
 	if (ImGui::Button("Create")) {
 
@@ -139,13 +143,13 @@ lamp::gl::mesh_ptr Gears::create(const gear& gear)
 	const float r0 = gear.inner_radius;
 	const float r1 = gear.outer_radius - gear.tooth_depth / 2.0f;
 	const float r2 = gear.outer_radius + gear.tooth_depth / 2.0f;
-	const float da = 2.0f * glm::pi<float>() / static_cast<float>(gear.num_teeth) / 4.0f;
+	const float da = 2.0f * glm::pi<float>() / static_cast<float>(gear.teeth) / 4.0f;
 
 	const float half = gear.width * 0.5f;
 
-	for (int32_t i = 0; i < gear.num_teeth; i++) {
+	for (int32_t i = 0; i < gear.teeth; i++) {
 
-		const float ta = static_cast<float>(i) * 2.0f * glm::pi<float>() / static_cast<float>(gear.num_teeth);
+		const float ta = static_cast<float>(i) * 2.0f * glm::pi<float>() / static_cast<float>(gear.teeth);
 
 		const float cos_ta = cos(ta);
 		const float cos_ta_1da = cos(ta + da);
