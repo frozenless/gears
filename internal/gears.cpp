@@ -13,6 +13,8 @@
 #include "engine/camera.hpp"
 #include "engine/random.inl"
 
+#include "physics/utils.hpp"
+
 #include "gl/renderer.hpp"
 #include "gl/program.hpp"
 
@@ -27,6 +29,8 @@ lamp::gl::program_ptr debug_shader;
 
 lamp::gl::buffer_ptr camera_buffer;
 lamp::gl::buffer_ptr light_buffer;
+
+lamp::gl::mesh_ptr debug_mesh;
 
 constexpr lamp::v2 size(1280, 768);
 
@@ -43,6 +47,18 @@ void Gears::init()
 	debug_shader = lamp::Assets::create(debug_vert, debug_frag);
 	model_shader = lamp::Assets::create(model_vert, model_frag);
 
+	lamp::gl::Layout layout;
+	layout.add<float>(3);
+	layout.add<float>(3);
+
+	std::vector<lamp::v3> vertices;
+	std::vector<uint32_t> indices;
+
+	debug_mesh = lamp::Assets::create(vertices, indices, layout, GL_LINES, GL_DYNAMIC_DRAW);
+
+	_physics.init_renderer(debug_mesh, btIDebugDraw::DBG_DrawWireframe);
+
+	_gear.position     = glm::zero<lamp::v3>();
 	_gear.inner_radius = 0.7f;
 	_gear.outer_radius = 3.0f;
 	_gear.teeth        = 18;
@@ -56,6 +72,14 @@ void Gears::init()
 
 	_ecs.systems.add<lamp::systems::Renderer>();
 	_ecs.systems.add<Rotation>();
+
+	auto debug = _ecs.entities.create();
+	auto debug_renderer = debug.assign<lamp::components::renderer>();
+	debug.assign<lamp::components::transform>()->world = glm::identity<lamp::m4>();
+
+	debug_renderer->shader   = debug_shader;
+	debug_renderer->mesh     = debug_mesh;
+	debug_renderer->material = nullptr;
 
 	camera.view(lamp::v3(0.0f, 0.0f, -10.0f));
 	camera.perspective();
@@ -124,6 +148,16 @@ void Gears::draw()
 		gear_position->x = _gear.position.x;
 		gear_position->y = _gear.position.y;
 		gear_position->z = _gear.position.z;
+
+		const float radius = _gear.outer_radius;
+		auto shape  = new btBoxShape(btVector3(radius, radius, 0.55f));
+		auto object = new btCollisionObject();
+
+		object->setWorldTransform(lamp::utils::from(_gear.position, glm::identity<glm::quat>()));
+		object->setCollisionShape(shape);
+		//object->setUserIndex(index);
+
+		_physics.add_collision(object, btCollisionObject::CF_NO_CONTACT_RESPONSE);
 	}
 
 	ImGui::End();
