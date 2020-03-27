@@ -22,6 +22,7 @@
 #include "assets.inl"
 
 #include <glm/gtc/type_ptr.hpp>
+#include <GLFW/glfw3.h>
 #include <imgui.h>
 
 lamp::gl::program_ptr model_shader;
@@ -32,12 +33,34 @@ lamp::gl::buffer_ptr light_buffer;
 
 lamp::gl::mesh_ptr debug_mesh;
 
-constexpr lamp::v2 size(1280, 768);
+uint32_t selected_entity_id;
+
+constexpr lamp::v2  size(1280, 768);
 
 lamp::Camera camera(size);
+lamp::v2     mouse;
+
+void mouse_actions(GLFWwindow* ptr, const int32_t button, const int32_t  action, int)
+{
+	if (button == GLFW_MOUSE_BUTTON_1 &&
+	    action == GLFW_PRESS) {
+
+		/*auto game = static_cast<Gears*>(glfwGetWindowUserPointer(ptr));
+		auto hit  = game->physics().ray(camera.screen_to_world(mouse));
+
+		if (hit.hasHit()) {
+			selected_entity_id = hit.m_collisionObject->getUserIndex();
+		}*/
+	}
+}
 
 void Gears::init()
 {
+	glfwSetMouseButtonCallback(_window, mouse_actions);
+	glfwSetCursorPosCallback(  _window, [](GLFWwindow*, const double x, const double y) noexcept {
+		mouse = lamp::v2(x, y);
+	});
+
 	auto model_vert = lamp::Assets::create("shaders/glsl/model.vert", GL_VERTEX_SHADER);
 	auto model_frag = lamp::Assets::create("shaders/glsl/model.frag", GL_FRAGMENT_SHADER);
 
@@ -84,14 +107,14 @@ void Gears::init()
 	camera.view(lamp::v3(0.0f, 0.0f, -10.0f));
 	camera.perspective();
 
-	std::vector<lamp::m4> camera_uniforms = { camera.view(), camera.proj() };
+	std::array<lamp::m4, 2> camera_uniforms = { camera.view(), camera.proj() };
 
-	camera_buffer = lamp::Assets::create(GL_UNIFORM_BUFFER, camera_uniforms, GL_STATIC_DRAW);
+	camera_buffer = lamp::Assets::create(GL_UNIFORM_BUFFER, camera_uniforms.data(), camera_uniforms.size(), GL_STATIC_DRAW);
 	camera_buffer->bind_base(0);
 
-	std::vector<lamp::components::light> light_uniforms = { _light };
+	std::array<lamp::components::light, 1> light_uniforms = { _light };
 
-	light_buffer = lamp::Assets::create(GL_UNIFORM_BUFFER, light_uniforms, GL_STATIC_DRAW);
+	light_buffer = lamp::Assets::create(GL_UNIFORM_BUFFER, light_uniforms.data(), light_uniforms.size(), GL_STATIC_DRAW);
 	light_buffer->bind_base(1);
 
 	lamp::Editor::init(_window);
@@ -118,12 +141,22 @@ void Gears::draw()
 
 	lamp::Editor::begin();
 
-	if (_show_editor)
-	{
+	if (_show_editor) {
+
 		lamp::Editor::draw(_light);
 
-		std::vector<lamp::components::light> light_uniforms = { _light };
-		light_buffer->set_data(light_uniforms);
+		std::array<lamp::components::light, 1> uniforms = { _light };
+		light_buffer->set_data(uniforms);
+
+		/*if (selected_entity_id != 0) {
+
+			auto entity = _ecs.entities.get(entityx::Entity::Id(selected_entity_id));
+
+			if  (entity.valid())
+			{
+				lamp::Editor::draw("Material", entity.component<lamp::components::renderer>()->material);
+			}
+		}*/
 	}
 
 	ImGui::Begin("Gear");
@@ -155,7 +188,7 @@ void Gears::draw()
 
 		object->setWorldTransform(lamp::utils::from(_gear.position, glm::identity<glm::quat>()));
 		object->setCollisionShape(shape);
-		//object->setUserIndex(index);
+		//object->setUserIndex(gear.id().id());
 
 		_physics.add_collision(object, btCollisionObject::CF_NO_CONTACT_RESPONSE);
 	}
@@ -172,11 +205,14 @@ lamp::gl::mesh_ptr Gears::create(const Gear& gear)
 	std::vector<lamp::v3> vertices;
 	std::vector<uint32_t> indices;
 
+	vertices.reserve(80 * gear.teeth);
+	indices.reserve( 66 * gear.teeth);
+
 	const float r0 = gear.inner_radius;
 	const float r1 = gear.outer_radius - gear.tooth_depth / 2.0f;
 	const float r2 = gear.outer_radius + gear.tooth_depth / 2.0f;
-	const float da = 2.0f * glm::pi<float>() / static_cast<float>(gear.teeth) / 4.0f;
 
+	const float da   = 2.0f * glm::pi<float>() / static_cast<float>(gear.teeth) / 4.0f;
 	const float half = gear.width * 0.5f;
 
 	for (int32_t i = 0; i < gear.teeth; i++) {
