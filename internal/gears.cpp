@@ -54,6 +54,22 @@ void mouse_actions(GLFWwindow* ptr, const int32_t button, const int32_t  action,
 	}
 }
 
+Gears::Gears()
+	: _show_menu(false)
+{
+}
+
+void Gears::input(int32_t action, int32_t key) {
+
+	if (action == GLFW_PRESS) {
+		if (key == GLFW_KEY_TAB) {
+			_show_menu = !_show_menu;
+		} else {
+			Game::input(action, key);
+		}
+	}
+}
+
 void Gears::init()
 {
 	glfwSetMouseButtonCallback(_window, mouse_actions);
@@ -159,41 +175,44 @@ void Gears::draw()
 		}*/
 	}
 
-	ImGui::Begin("Gear");
-	ImGui::InputFloat3("Position", glm::value_ptr(_gear.position), 1);
-	ImGui::InputFloat("Outer Radius", &_gear.outer_radius, 0.1f);
-	ImGui::InputFloat("Inner Radius", &_gear.inner_radius, 0.1f);
+	if (_show_menu) {
 
-	ImGui::InputInt("Teeth", &_gear.teeth, 1);
+		ImGui::Begin("Gear");
+		ImGui::InputFloat3("Position", glm::value_ptr(_gear.position), 1);
+		ImGui::InputFloat("Outer Radius", &_gear.outer_radius, 0.1f);
+		ImGui::InputFloat("Inner Radius", &_gear.inner_radius, 0.1f);
 
-	if (ImGui::Button("Create")) {
+		ImGui::InputInt("Teeth", &_gear.teeth, 1);
 
-		auto gear = _ecs.entities.create();
-		auto gear_renderer = gear.assign<lamp::components::renderer>();
-		auto gear_position = gear.assign<lamp::components::position>();
-		gear.assign<lamp::components::transform>();
-		gear.assign<rotation>()->speed = 0.4f;
+		if (ImGui::Button("Create")) {
 
-		gear_renderer->shader   = model_shader;
-		gear_renderer->material = std::make_shared<lamp::Material>(lamp::Random::linear(glm::zero<lamp::v3>(), glm::one<lamp::v3>()));;
-		gear_renderer->mesh     = create(_gear);
+			auto gear = _ecs.entities.create();
+			auto gear_renderer = gear.assign<lamp::components::renderer>();
+			auto gear_position = gear.assign<lamp::components::position>();
+			gear.assign<lamp::components::transform>();
+			gear.assign<rotation>()->speed = 0.4f;
 
-		gear_position->x = _gear.position.x;
-		gear_position->y = _gear.position.y;
-		gear_position->z = _gear.position.z;
+			gear_renderer->shader   = model_shader;
+			gear_renderer->material = std::make_shared<lamp::Material>(lamp::Random::linear(glm::zero<lamp::v3>(), glm::one<lamp::v3>()));;
+			gear_renderer->mesh = create(_gear);
 
-		const float radius = _gear.outer_radius;
-		auto shape  = new btBoxShape(btVector3(radius, radius, 0.55f));
-		auto object = new btCollisionObject();
+			gear_position->x = _gear.position.x;
+			gear_position->y = _gear.position.y;
+			gear_position->z = _gear.position.z;
 
-		object->setWorldTransform(lamp::utils::from(_gear.position, glm::identity<glm::quat>()));
-		object->setCollisionShape(shape);
-		//object->setUserIndex(gear.id().id());
+			const float radius = _gear.outer_radius;
+			auto shape = new btBoxShape(btVector3(radius, radius, 0.55f));
+			auto object = new btCollisionObject();
 
-		_physics.add_collision(object, btCollisionObject::CF_NO_CONTACT_RESPONSE);
+			object->setWorldTransform(lamp::utils::from(_gear.position, glm::identity<glm::quat>()));
+			object->setCollisionShape(shape);
+			//object->setUserIndex(gear.id().id());
+
+			_physics.add_collision(object, btCollisionObject::CF_NO_CONTACT_RESPONSE);
+		}
+
+		ImGui::End();
 	}
-
-	ImGui::End();
 
 	lamp::Editor::end();
 }
