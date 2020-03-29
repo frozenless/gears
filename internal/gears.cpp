@@ -33,24 +33,25 @@ lamp::gl::buffer_ptr light_buffer;
 
 lamp::gl::mesh_ptr debug_mesh;
 
-uint32_t selected_entity_id;
-
 constexpr lamp::v2  size(1280, 768);
 
 lamp::Camera camera(size);
 lamp::v2     mouse;
+
+entityx::Entity::Id entity_id;
 
 void mouse_actions(GLFWwindow* ptr, const int32_t button, const int32_t  action, int)
 {
 	if (button == GLFW_MOUSE_BUTTON_1 &&
 	    action == GLFW_PRESS) {
 
-		/*auto game = static_cast<Gears*>(glfwGetWindowUserPointer(ptr));
+		auto game = static_cast<Gears*>(glfwGetWindowUserPointer(ptr));
 		auto hit  = game->physics().ray(camera.screen_to_world(mouse));
 
 		if (hit.hasHit()) {
-			selected_entity_id = hit.m_collisionObject->getUserIndex();
-		}*/
+			auto entity = static_cast<entityx::Entity*>(hit.m_collisionObject->getUserPointer());
+			entity_id = entity->id();
+		}
 	}
 }
 
@@ -164,15 +165,11 @@ void Gears::draw()
 		std::array<lamp::components::light, 1> uniforms = { _light };
 		light_buffer->set_data(uniforms);
 
-		/*if (selected_entity_id != 0) {
-
-			auto entity = _ecs.entities.get(entityx::Entity::Id(selected_entity_id));
-
-			if  (entity.valid())
-			{
-				lamp::Editor::draw("Material", entity.component<lamp::components::renderer>()->material);
-			}
-		}*/
+		auto entity    = _ecs.entities.get(entity_id);
+		if (entity_id != entityx::Entity::INVALID)
+		{
+			lamp::Editor::draw("Material", entity.component<lamp::components::renderer>()->material);
+		}
 	}
 
 	if (_show_menu) {
@@ -206,7 +203,7 @@ void Gears::draw()
 
 			object->setWorldTransform(lamp::utils::from(_gear.position, glm::identity<glm::quat>()));
 			object->setCollisionShape(shape);
-			//object->setUserIndex(gear.id().id());
+			object->setUserPointer(&gear);
 
 			_physics.add_collision(object, btCollisionObject::CF_NO_CONTACT_RESPONSE);
 		}
