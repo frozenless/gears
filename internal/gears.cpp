@@ -106,11 +106,12 @@ void Gears::init()
 	_gear.width        = 0.5f;
 
 	_light.color    = lamp::rgb(1.0f);
-	_light.position = lamp::v3( 10.0f, 10.0f, 15.0f);
+	_light.position = lamp::v3( 2.5f);
 	_light.ambient  = 0.1f;
 	_light.diffuse  = 0.9f;
+	_light.specular = 0.5f;
 
-	_ecs.systems.add<lamp::systems::Renderer>();
+	_ecs.systems.add<lamp::systems::Renderer>()->init();
 	_ecs.systems.add<Rotation>();
 
 	auto debug = _ecs.entities.create();
@@ -165,16 +166,16 @@ void Gears::draw()
 		std::array<lamp::components::light, 1> uniforms = { _light };
 		light_buffer->set_data(uniforms);
 
-		auto entity    = _ecs.entities.get(entity_id);
+		/*auto entity    = _ecs.entities.get(entity_id);
 		if (entity_id != entityx::Entity::INVALID)
 		{
 			lamp::Editor::draw("Material", entity.component<lamp::components::renderer>()->material);
-		}
+		}*/
 	}
 
 	if (_show_menu) {
 
-		ImGui::Begin("Gear");
+		ImGui::Begin("Gear", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 		ImGui::InputFloat3("Position", glm::value_ptr(_gear.position), 1);
 		ImGui::InputFloat("Outer Radius", &_gear.outer_radius, 0.1f);
 		ImGui::InputFloat("Inner Radius", &_gear.inner_radius, 0.1f);
@@ -190,15 +191,17 @@ void Gears::draw()
 			gear.assign<rotation>()->speed = 0.4f;
 
 			gear_renderer->shader   = model_shader;
-			gear_renderer->material = std::make_shared<lamp::Material>(lamp::Random::linear(glm::zero<lamp::v3>(), glm::one<lamp::v3>()));;
-			gear_renderer->mesh = create(_gear);
+			gear_renderer->material = std::make_shared<lamp::Material>();
+			gear_renderer->material->color = lamp::Random::linear(glm::zero<lamp::v3>(), glm::one<lamp::v3>());
+			gear_renderer->material->shininess = 32.0f;
+			gear_renderer->mesh = Gears::create(_gear);
 
 			gear_position->x = _gear.position.x;
 			gear_position->y = _gear.position.y;
 			gear_position->z = _gear.position.z;
 
 			const float radius = _gear.outer_radius;
-			auto shape = new btBoxShape(btVector3(radius, radius, 0.55f));
+			auto shape  = new btBoxShape(btVector3(radius, radius, 0.55f));
 			auto object = new btCollisionObject();
 
 			object->setWorldTransform(lamp::utils::from(_gear.position, glm::identity<glm::quat>()));
