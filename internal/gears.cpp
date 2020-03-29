@@ -396,7 +396,7 @@ lamp::gl::mesh_ptr Gears::create(const Gear& gear)
 
 int main()
 {
-	Gears game; game.run({ "Gears", size, 8, false, false });
+	Gears game; game.run({ "Gears", size, 8, false, false, true });
 
 	return 0;
 }
