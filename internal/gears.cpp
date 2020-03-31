@@ -38,8 +38,6 @@ constexpr lamp::v2  size(1280, 768);
 lamp::Camera camera(size);
 lamp::v2     mouse;
 
-entityx::Entity::Id entity_id;
-
 void mouse_actions(GLFWwindow* ptr, const int32_t button, const int32_t  action, int)
 {
 	if (button == GLFW_MOUSE_BUTTON_1 &&
@@ -49,8 +47,7 @@ void mouse_actions(GLFWwindow* ptr, const int32_t button, const int32_t  action,
 		auto hit  = game->physics().ray(camera.screen_to_world(mouse));
 
 		if (hit.hasHit()) {
-			auto entity = static_cast<entityx::Entity*>(hit.m_collisionObject->getUserPointer());
-			entity_id = entity->id();
+
 		}
 	}
 }
@@ -175,8 +172,12 @@ void Gears::draw()
 
 	if (_show_menu) {
 
+		static auto color = lamp::Random::linear(glm::zero<lamp::v3>(), glm::one<lamp::v3>());
+
 		ImGui::Begin("Gear", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+
 		ImGui::InputFloat3("Position", glm::value_ptr(_gear.position), 1);
+		ImGui::ColorEdit3("Color",        glm::value_ptr(color));
 		ImGui::InputFloat("Outer Radius", &_gear.outer_radius, 0.1f);
 		ImGui::InputFloat("Inner Radius", &_gear.inner_radius, 0.1f);
 
@@ -192,7 +193,7 @@ void Gears::draw()
 
 			gear_renderer->shader   = model_shader;
 			gear_renderer->material = std::make_shared<lamp::Material>();
-			gear_renderer->material->color = lamp::Random::linear(glm::zero<lamp::v3>(), glm::one<lamp::v3>());
+			gear_renderer->material->color     = color;
 			gear_renderer->material->shininess = 32.0f;
 			gear_renderer->mesh = Gears::create(_gear);
 
@@ -200,15 +201,19 @@ void Gears::draw()
 			gear_position->y = _gear.position.y;
 			gear_position->z = _gear.position.z;
 
+			btVector3 inertia;
+
+			const float mass   = 1.0f;
 			const float radius = _gear.outer_radius;
-			auto shape  = new btBoxShape(btVector3(radius, radius, 0.55f));
-			auto object = new btCollisionObject();
 
-			object->setWorldTransform(lamp::utils::from(_gear.position, glm::identity<glm::quat>()));
-			object->setCollisionShape(shape);
-			object->setUserPointer(&gear);
+			auto shape = new btBoxShape(btVector3(radius, radius, 0.55f));
+			shape->calculateLocalInertia(mass,inertia);
 
-			_physics.add_collision(object, btCollisionObject::CF_NO_CONTACT_RESPONSE);
+			auto body = new btRigidBody(mass, new btDefaultMotionState(lamp::utils::from(_gear.position, glm::identity<lamp::quat>())), shape, inertia);
+
+			_physics.add_rigidbody(body);
+
+			color = lamp::Random::linear(glm::zero<lamp::v3>(), glm::one<lamp::v3>());
 		}
 
 		ImGui::End();
