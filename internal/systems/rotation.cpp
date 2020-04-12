@@ -1,9 +1,10 @@
-#include "rotation.hpp"
+
 #include "game.hpp"
 
 #include "engine/components/transform.hpp"
 #include "engine/components/position.hpp"
 
+/*
 #include "components/rotation.hpp"
 
 void Rotation::update(entityx::EntityManager& es, entityx::EventManager&, entityx::TimeDelta dt)
@@ -17,3 +18,4 @@ void Rotation::update(entityx::EntityManager& es, entityx::EventManager&, entity
 		transform.world *= glm::mat4_cast(glm::quat(lamp::v3(0.0f, 0.0f, amount)));
 	});
 }
+*/

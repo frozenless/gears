@@ -18,8 +18,9 @@ protected:
 	void input(int32_t action, int32_t key) override;
 
 	static lamp::gl::mesh_ptr create(const Gear& gear);
+		   entityx::Entity    create(const lamp::v3& position, const lamp::math::rgb& color, float offset, float speed);
 
 private:
 	bool _show_menu;
-	Gear _gear;
+	Gear  gear;
 };
