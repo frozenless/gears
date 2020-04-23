@@ -1,5 +1,3 @@
-#pragma once
-
 #include "game.hpp"
 #include "gear.hpp"
 
@@ -18,7 +16,7 @@ protected:
 	void input(int32_t action, int32_t key) override;
 
 	static lamp::gl::mesh_ptr create(const Gear& gear);
-		   entityx::Entity    create(const lamp::v3& position, const lamp::math::rgb& color, float offset, float speed);
+		   entityx::Entity    create(const lamp::v3& position, const lamp::math::rgb& color, bool middle, float speed);
 
 private:
 	bool _show_menu;

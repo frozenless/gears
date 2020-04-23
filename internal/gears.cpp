@@ -31,35 +31,31 @@ lamp::gl::buffer_ptr light_buffer;
 
 lamp::gl::mesh_ptr debug_mesh;
 
+const     btVector3 axis(0, 0, 1);
 constexpr lamp::v2  size(1280, 768);
 
 lamp::Camera camera(size);
 lamp::v2     mouse;
-
-void mouse_actions(GLFWwindow* ptr, const int32_t button, const int32_t  action, int)
-{
-	if (button == GLFW_MOUSE_BUTTON_1 &&
-	    action == GLFW_PRESS) {
-
-		auto game = static_cast<Gears*>(glfwGetWindowUserPointer(ptr));
-		auto hit  = game->physics().ray(camera.screen_to_world(mouse));
-
-		if (hit.hasHit()) {
-
-		}
-	}
-}
 
 Gears::Gears()
 	: _show_menu(false)
 {
 }
 
-void Gears::input(int32_t action, int32_t key) {
-
+void Gears::input(int32_t action, int32_t key)
+{
 	if (action == GLFW_PRESS) {
 		if (key == GLFW_KEY_TAB) {
 			_show_menu = !_show_menu;
+		} else if (key == GLFW_MOUSE_BUTTON_1) {
+
+			auto game = static_cast<Gears*>(glfwGetWindowUserPointer(static_cast<GLFWwindow*>(_window)));
+			auto hit  = game->physics().ray(camera.screen_to_world(mouse));
+
+			if (hit.hasHit()) {
+
+			}
+
 		} else {
 			Game::input(action, key);
 		}
@@ -68,7 +64,6 @@ void Gears::input(int32_t action, int32_t key) {
 
 void Gears::init()
 {
-	glfwSetMouseButtonCallback(static_cast<GLFWwindow*>(_window), mouse_actions);
 	glfwSetCursorPosCallback(static_cast<GLFWwindow*>(_window), [](GLFWwindow*, const double x, const double y) noexcept {
 		mouse = lamp::v2(x, y);
 	});
@@ -86,8 +81,8 @@ void Gears::init()
 	layout.add<float>(3);
 	layout.add<float>(3);
 
-	std::vector<lamp::v3> vertices;
-	std::vector<uint32_t> indices;
+	const std::vector<lamp::v3> vertices;
+	const std::vector<uint32_t> indices;
 
 	debug_mesh = lamp::Assets::create(vertices, indices, layout, GL_LINES, GL_DYNAMIC_DRAW);
 
@@ -101,19 +96,16 @@ void Gears::init()
 	_ecs.systems.add<lamp::systems::Renderer>()->init();
 	_ecs.systems.add<lamp::systems::Physics>();
 
-	gear.position     = glm::zero<lamp::v3>();
-	gear.inner_radius = 0.7f;
-	gear.outer_radius = 3.0f;
+	gear.position = glm::zero<lamp::v3>();
+	gear.inner = 0.7f;
+	gear.outer = 3.0f;
 	gear.depth = 0.7f;
 	gear.width = 0.5f;
 	gear.teeth = 13;
 
-	const btVector3 axis(0, 0, 1);
-	const float offset = 2.0f * glm::pi<float>() / static_cast<float>(gear.teeth) / 4.0f;
-
-	auto right  = create(lamp::v3( 6.0f, 0.0f, 0.0f), lamp::Random::color(), 0.0f, 3.5f);
-	auto center = create(lamp::v3( 0.0f, 0.0f, 0.0f), lamp::Random::color(),     offset, 0);
-	auto left   = create(lamp::v3(-6.0f, 0.0f, 0.0f), lamp::Random::color(), 0.0f, 0);
+	auto right  = create(lamp::v3( 6.0f, 0.0f, 0.0f), lamp::Random::color(), false, 3.5f);
+	auto center = create(lamp::v3( 0.0f, 0.0f, 0.0f), lamp::Random::color(), true,  0);
+	auto left   = create(lamp::v3(-6.0f, 0.0f, 0.0f), lamp::Random::color(), false, 0);
 
 	_physics.add_constraint(new btGearConstraint(
 	*right.component<lamp::components::rigidbody>()->body,
@@ -134,12 +126,12 @@ void Gears::init()
 	camera.view(lamp::v3(0.0f, 0.0f, -15.0f));
 	camera.perspective();
 
-	std::array<lamp::m4, 2> camera_uniforms = { camera.view(), camera.proj() };
+	const std::array<lamp::m4, 2> camera_uniforms = { camera.view(), camera.proj() };
 
 	camera_buffer = lamp::Assets::create(GL_UNIFORM_BUFFER, camera_uniforms.data(), camera_uniforms.size(), GL_STATIC_DRAW);
 	camera_buffer->bind_base(0);
 
-	std::array<lamp::components::light, 1> light_uniforms = { _light };
+	const std::array<lamp::components::light, 1> light_uniforms = { _light };
 
 	light_buffer = lamp::Assets::create(GL_UNIFORM_BUFFER, light_uniforms.data(), light_uniforms.size(), GL_STATIC_DRAW);
 	light_buffer->bind_base(1);
@@ -172,7 +164,7 @@ void Gears::draw()
 
 		lamp::Editor::draw(_light);
 
-		std::array<lamp::components::light, 1> uniforms = { _light };
+		const std::array<lamp::components::light, 1> uniforms = { _light };
 		light_buffer->data(uniforms);
 
 		/*auto entity    = _ecs.entities.get(entity_id);
@@ -190,14 +182,14 @@ void Gears::draw()
 
 		ImGui::InputFloat3("Position", glm::value_ptr(gear.position), 1);
 		ImGui::ColorEdit3("Color",        static_cast<float*>(color));
-		ImGui::InputFloat("Outer Radius", &gear.outer_radius, 0.1f);
-		ImGui::InputFloat("Inner Radius", &gear.inner_radius, 0.1f);
+		ImGui::InputFloat("Outer Radius", &gear.outer, 0.1f);
+		ImGui::InputFloat("Inner Radius", &gear.inner, 0.1f);
 
 		ImGui::InputInt("Teeth", &gear.teeth, 2);
 
 		if (ImGui::Button("Create"))
 		{
-			create(gear.position, color, 3, 0.0f);
+			create(gear.position, color, false, 0.0f);
 
 			color = lamp::Random::color();
 		}
@@ -215,14 +207,14 @@ lamp::gl::mesh_ptr Gears::create(const Gear& gear)
 	std::vector<lamp::v3> vertices;
 	std::vector<uint32_t> indices;
 
-	vertices.reserve(80 * gear.teeth);
-	indices.reserve( 66 * gear.teeth);
+	vertices.reserve(static_cast<size_t>(80) * gear.teeth);
+	indices.reserve(static_cast<size_t>(66) * gear.teeth);
 
 	const float half_depth = gear.depth * 0.5f;
 
-	const float r0 = gear.inner_radius;
-	const float r1 = gear.outer_radius - half_depth;
-	const float r2 = gear.outer_radius + half_depth;
+	const float r0 = gear.inner;
+	const float r1 = gear.outer - half_depth;
+	const float r2 = gear.outer + half_depth;
 
 	const float da         = 2.0f * glm::pi<float>() / static_cast<float>(gear.teeth) / 4.0f;
 	const float half_width = gear.width * 0.5f;
@@ -257,12 +249,12 @@ lamp::gl::mesh_ptr Gears::create(const Gear& gear)
 		// front face
 		lamp::v3 normal = lamp::v3(0.0f, 0.0f, 1.0f);
 		vertices.insert(vertices.end(), {
-				lamp::v3(r0 * cos_ta,     r0 * sin_ta, half_width), normal,
-				lamp::v3(r1 * cos_ta,     r1 * sin_ta, half_width), normal,
-				lamp::v3(r0 * cos_ta,     r0 * sin_ta, half_width), normal,
-				lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, half_width), normal,
-				lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, half_width), normal,
-				lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, half_width), normal
+			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     half_width), normal,
+			lamp::v3(r1 * cos_ta,     r1 * sin_ta,     half_width), normal,
+			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     half_width), normal,
+			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, half_width), normal,
+			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, half_width), normal,
+			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, half_width), normal
 		});
 
 		indices.insert(indices.end(), {
@@ -274,10 +266,10 @@ lamp::gl::mesh_ptr Gears::create(const Gear& gear)
 
 		// front sides of teeth
 		vertices.insert(vertices.end(), {
-				lamp::v3(r1 * cos_ta,     r1 * sin_ta, half_width), normal,
-				lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, half_width), normal,
-				lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, half_width), normal,
-				lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, half_width), normal
+			lamp::v3(r1 * cos_ta,     r1 * sin_ta,     half_width), normal,
+			lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, half_width), normal,
+			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, half_width), normal,
+			lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, half_width), normal
 		});
 
 		indices.insert(indices.end(), {
@@ -288,12 +280,12 @@ lamp::gl::mesh_ptr Gears::create(const Gear& gear)
 		// back face
 		normal = lamp::v3(0.0f, 0.0f, -1.0f);
 		vertices.insert(vertices.end(), {
-				lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -half_width), normal,
-				lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -half_width), normal,
-				lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal,
-				lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -half_width), normal,
-				lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, -half_width), normal,
-				lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -half_width), normal
+			lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -half_width), normal,
+			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -half_width), normal,
+			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal,
+			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -half_width), normal,
+			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, -half_width), normal,
+			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -half_width), normal
 		});
 
 		indices.insert(indices.end(), {
@@ -305,10 +297,10 @@ lamp::gl::mesh_ptr Gears::create(const Gear& gear)
 
 		// back sides of teeth
 		vertices.insert(vertices.end(), {
-				lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal,
-				lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -half_width), normal,
-				lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -half_width), normal,
-				lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -half_width), normal
+			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal,
+			lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -half_width), normal,
+			lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -half_width), normal,
+			lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -half_width), normal
 		});
 
 		indices.insert(indices.end(), {
@@ -319,10 +311,10 @@ lamp::gl::mesh_ptr Gears::create(const Gear& gear)
 		// draw outward faces of teeth
 		normal = lamp::v3(v1, -u1, 0.0f);
 		vertices.insert(vertices.end(), {
-				lamp::v3(r1 * cos_ta,     r1 * sin_ta, half_width), normal,
-				lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -half_width), normal,
-				lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, half_width), normal,
-				lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -half_width), normal
+			lamp::v3(r1 * cos_ta,     r1 * sin_ta,      half_width), normal,
+			lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -half_width), normal,
+			lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da,  half_width), normal,
+			lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -half_width), normal
 		});
 
 		indices.insert(indices.end(), {
@@ -332,10 +324,10 @@ lamp::gl::mesh_ptr Gears::create(const Gear& gear)
 
 		normal = lamp::v3(cos_ta, sin_ta, 0.0f);
 		vertices.insert(vertices.end(), {
-				lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, half_width), normal,
-				lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -half_width), normal,
-				lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, half_width), normal,
-				lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -half_width), normal
+			lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da,  half_width), normal,
+			lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -half_width), normal,
+			lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da,  half_width), normal,
+			lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -half_width), normal
 		});
 
 		indices.insert(indices.end(), {
@@ -345,10 +337,10 @@ lamp::gl::mesh_ptr Gears::create(const Gear& gear)
 
 		normal = lamp::v3(v2, -u2, 0.0f);
 		vertices.insert(vertices.end(), {
-				lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, half_width), normal,
-				lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -half_width), normal,
-				lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, half_width), normal,
-				lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal
+			lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da,  half_width), normal,
+			lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -half_width), normal,
+			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da,  half_width), normal,
+			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal
 		});
 
 		indices.insert(indices.end(), {
@@ -358,10 +350,10 @@ lamp::gl::mesh_ptr Gears::create(const Gear& gear)
 
 		normal = lamp::v3(cos_ta, sin_ta, 0.0f);
 		vertices.insert(vertices.end(), {
-				lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, half_width), normal,
-				lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal,
-				lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, half_width), normal,
-				lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, -half_width), normal
+			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da,  half_width), normal,
+			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal,
+			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da,  half_width), normal,
+			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, -half_width), normal
 		});
 
 		indices.insert(indices.end(), {
@@ -369,12 +361,15 @@ lamp::gl::mesh_ptr Gears::create(const Gear& gear)
 			index + 1, index + 3, index + 2
 		}); index += 4;
 
+		const lamp::v3 normal_1(-cos_ta,     -sin_ta,     0.0f);
+		const lamp::v3 normal_2(-cos_ta_4da, -sin_ta_4da, 0.0f);
+
 		// draw inside radius cylinder
 		vertices.insert(vertices.end(), {
-				lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -half_width), lamp::v3(-cos_ta, -sin_ta, 0.0f),
-				lamp::v3(r0 * cos_ta,     r0 * sin_ta, half_width), lamp::v3(-cos_ta, -sin_ta, 0.0f),
-				lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -half_width), lamp::v3(-cos_ta_4da, -sin_ta_4da, 0.0f),
-				lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, half_width), lamp::v3(-cos_ta_4da, -sin_ta_4da, 0.0f)
+			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -half_width), normal_1,
+			lamp::v3(r0 * cos_ta,     r0 * sin_ta,      half_width), normal_1,
+			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -half_width), normal_2,
+			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da,  half_width), normal_2
 		});
 
 		indices.insert(indices.end(), {
@@ -390,7 +385,7 @@ lamp::gl::mesh_ptr Gears::create(const Gear& gear)
 	return lamp::Assets::create(vertices, indices, layout, GL_TRIANGLES, GL_STATIC_DRAW);
 }
 
-entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& color, const float offset, const float speed)
+entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& color, const bool middle, const float speed)
 {
 	auto entity   = _ecs.entities.create();
 	auto renderer = entity.assign<lamp::components::renderer>();
@@ -403,22 +398,22 @@ entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& c
 	renderer->mesh = Gears::create(gear);
 
 	btVector3 inertia;
+	constexpr float mass = 6.28f;
 
-	constexpr float mass   = 6.28f;
-	const     float radius = gear.outer_radius;
-
-	auto shape = new btCylinderShapeZ(btVector3(radius, radius, 0.5f));
+	auto shape = new btCylinderShapeZ(btVector3(gear.outer, gear.outer, gear.width));
 	shape->calculateLocalInertia(mass,inertia);
 
 	btRigidBody::btRigidBodyConstructionInfo info(mass, nullptr, shape, inertia);
 	info.m_startWorldTransform.setOrigin(lamp::utils::from(position));
 
-	if (offset > 0.0f)
+	if (middle)
 	{
-		info.m_startWorldTransform.setRotation(btQuaternion(btVector3(0, 0, 1), offset));
+		const float offset = 2.0f * glm::pi<float>() / static_cast<float>(gear.teeth) / 4.0f;
+
+		info.m_startWorldTransform.setRotation(btQuaternion(axis, offset));
 	}
 
-	auto body  = new btRigidBody(info);
+	auto body = new btRigidBody(info);
 	body->setLinearFactor(btVector3(1, 0, 0));
 
 	if (speed > 0.0f)
