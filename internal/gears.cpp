@@ -1,4 +1,5 @@
 #include "gears.hpp"
+#include "components/selectable.hpp"
 
 #include "engine/systems/renderer.hpp"
 #include "engine/systems/physics.hpp"
@@ -54,6 +55,14 @@ void Gears::input(int32_t action, int32_t key)
 
 			if (hit.hasHit()) {
 
+                _ecs.entities.each<selectable>([](entityx::Entity entity, selectable& selectable) {
+                    selectable.selected = false;
+                });
+
+				auto id     = _ecs.entities.create_id(hit.m_collisionObject->getUserIndex());
+                auto entity = _ecs.entities.get(id);
+
+				entity.component<selectable>()->selected = true;
 			}
 
 		} else {
@@ -167,11 +176,13 @@ void Gears::draw()
 		const std::array<lamp::components::light, 1> uniforms = { _light };
 		light_buffer->data(uniforms);
 
-		/*auto entity    = _ecs.entities.get(entity_id);
-		if (entity_id != entityx::Entity::INVALID)
-		{
-			lamp::Editor::draw("Material", entity.component<lamp::components::renderer>()->material);
-		}*/
+		_ecs.entities.each<selectable>([](entityx::Entity entity, selectable& selectable) {
+
+			if (selectable.selected)
+			{
+				lamp::Editor::draw("Material", entity.component<lamp::components::renderer>()->material);
+			}
+		});
 	}
 
 	if (_show_menu) {
@@ -390,6 +401,7 @@ entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& c
 	auto entity   = _ecs.entities.create();
 	auto renderer = entity.assign<lamp::components::renderer>();
 	entity.assign<lamp::components::transform>();
+    entity.assign<selectable>();
 
 	renderer->shader   = model_shader;
 	renderer->material = std::make_shared<lamp::Material>();
@@ -415,6 +427,7 @@ entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& c
 
 	auto body = new btRigidBody(info);
 	body->setLinearFactor(btVector3(1, 0, 0));
+	body->setUserIndex(entity.id().id());
 
 	if (speed > 0.0f)
 	{
