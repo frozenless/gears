@@ -90,10 +90,7 @@ void Gears::init()
 	layout.add<float>(3);
 	layout.add<float>(3);
 
-	const std::vector<lamp::v3> vertices;
-	const std::vector<uint32_t> indices;
-
-	debug_mesh = lamp::Assets::create(vertices, indices, layout, GL_LINES, GL_DYNAMIC_DRAW);
+	debug_mesh = lamp::Assets::create(layout, GL_LINES, GL_DYNAMIC_DRAW);
 
 	_physics.init_renderer(debug_mesh, btIDebugDraw::DBG_DrawWireframe);
 
@@ -135,15 +132,15 @@ void Gears::init()
 	camera.view(lamp::v3(0.0f, 0.0f, -15.0f));
 	camera.perspective();
 
-	const std::array<lamp::m4, 2> camera_uniforms = { camera.view(), camera.proj() };
+	const std::array<lamp::m4, 2> u_camera = { camera.view(), camera.proj() };
 
-	camera_buffer = lamp::Assets::create(GL_UNIFORM_BUFFER, camera_uniforms.data(), camera_uniforms.size(), GL_STATIC_DRAW);
-	camera_buffer->bind_base(0);
+	camera_buffer = lamp::Assets::create(GL_UNIFORM_BUFFER, std::make_pair(u_camera.data(), u_camera.size()), GL_STATIC_DRAW);
+	camera_buffer->bind(0);
 
-	const std::array<lamp::components::light, 1> light_uniforms = { _light };
+	const std::array<lamp::components::light, 1> u_light = { _light };
 
-	light_buffer = lamp::Assets::create(GL_UNIFORM_BUFFER, light_uniforms.data(), light_uniforms.size(), GL_STATIC_DRAW);
-	light_buffer->bind_base(1);
+	light_buffer = lamp::Assets::create(GL_UNIFORM_BUFFER, std::make_pair(u_light.data(), u_light.size()), GL_STATIC_DRAW);
+	light_buffer->bind(1);
 
 	lamp::Editor::init(static_cast<GLFWwindow*>(_window));
 }
@@ -180,7 +177,7 @@ void Gears::draw()
 
 			if (selectable.selected)
 			{
-				lamp::Editor::draw("Material", entity.component<lamp::components::renderer>()->material);
+				lamp::Editor::draw(entity.component<lamp::components::renderer>()->material);
 			}
 		});
 	}
@@ -191,8 +188,8 @@ void Gears::draw()
 
 		ImGui::Begin("Gear", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 
-		ImGui::InputFloat3("Position", glm::value_ptr(gear.position), 1);
-		ImGui::ColorEdit3("Color",        static_cast<float*>(color));
+		ImGui::InputFloat3("Position",    glm::value_ptr(gear.position), 1);
+		ImGui::ColorEdit3("Color",        static_cast<float*>(color), ImGuiColorEditFlags_NoOptions | ImGuiColorEditFlags_NoTooltip);
 		ImGui::InputFloat("Outer Radius", &gear.outer, 0.1f);
 		ImGui::InputFloat("Inner Radius", &gear.inner, 0.1f);
 
@@ -427,7 +424,7 @@ entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& c
 
 	auto body = new btRigidBody(info);
 	body->setLinearFactor(btVector3(1, 0, 0));
-	body->setUserIndex(entity.id().id());
+	body->setUserIndex(static_cast<int32_t>(entity.id().id()));
 
 	if (speed > 0.0f)
 	{
