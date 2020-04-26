@@ -400,11 +400,11 @@ entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& c
 	entity.assign<lamp::components::transform>();
     entity.assign<selectable>();
 
-	renderer->shader   = model_shader;
+	renderer->shader = model_shader;
+    renderer->mesh   = Gears::create(gear);
+
 	renderer->material = std::make_shared<lamp::Material>();
-	renderer->material->color     = color;
-	renderer->material->shininess = 32.0f;
-	renderer->mesh = Gears::create(gear);
+	renderer->material->color = color;
 
 	btVector3 inertia;
 	constexpr float mass = 6.28f;
