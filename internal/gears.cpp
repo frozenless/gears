@@ -102,24 +102,11 @@ void Gears::init()
 	_ecs.systems.add<lamp::systems::Renderer>()->init();
 	_ecs.systems.add<lamp::systems::Physics>();
 
-	gear.position = glm::zero<lamp::v3>();
 	gear.inner = 0.7f;
 	gear.outer = 3.0f;
 	gear.depth = 0.7f;
 	gear.width = 0.5f;
 	gear.teeth = 13;
-
-	auto right  = create(lamp::v3( 6.0f, 0.0f, 0.0f), lamp::Random::color(), false, 3.5f);
-	auto center = create(lamp::v3( 0.0f, 0.0f, 0.0f), lamp::Random::color(), true,  0);
-	auto left   = create(lamp::v3(-6.0f, 0.0f, 0.0f), lamp::Random::color(), false, 0);
-
-	_physics.add_constraint(new btGearConstraint(
-	*right.component<lamp::components::rigidbody>()->body,
-	*center.component<lamp::components::rigidbody>()->body, axis, axis), true);
-
-	_physics.add_constraint(new btGearConstraint(
-	*center.component<lamp::components::rigidbody>()->body,
-	*left.component<lamp::components::rigidbody>()->body, axis, axis), true);
 
 	auto debug    = _ecs.entities.create();
 	auto renderer = debug.assign<lamp::components::renderer>();
@@ -184,23 +171,34 @@ void Gears::draw()
 
 	if (_show_menu) {
 
-		static auto color = lamp::Random::color();
+		static auto count    = 3;
+		static auto position = glm::zero<lamp::v3>();
 
 		ImGui::Begin("Gear", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 
-		ImGui::InputFloat3("Position",    glm::value_ptr(gear.position), 1);
-		ImGui::ColorEdit3("Color",        static_cast<float*>(color), ImGuiColorEditFlags_NoOptions | ImGuiColorEditFlags_NoTooltip);
+		ImGui::InputFloat3("Position",    glm::value_ptr(position), 1);
 		ImGui::InputFloat("Outer Radius", &gear.outer, 0.1f);
 		ImGui::InputFloat("Inner Radius", &gear.inner, 0.1f);
 
 		ImGui::InputInt("Teeth", &gear.teeth, 2);
+        ImGui::InputInt("Count", &count,      1);
 
-		if (ImGui::Button("Create"))
-		{
-			create(gear.position, color, false, 0.0f);
+		if (ImGui::Button("Generate"))
+        {
+            const float x = gear.outer * 2.0f;
 
-			color = lamp::Random::color();
-		}
+            auto right  = create(lamp::v3(position.x + x, position.y, position.z), lamp::Random::color(), false, 3.5f);
+            auto center = create(lamp::v3(    position.x,     position.y, position.z), lamp::Random::color(), true,  0);
+            auto left   = create(lamp::v3(position.x - x,  position.y, position.z), lamp::Random::color(), false, 0);
+
+            _physics.add_constraint(new btGearConstraint(
+                *right.component<lamp::components::rigidbody>()->body,
+                *center.component<lamp::components::rigidbody>()->body, axis, axis), true);
+
+            _physics.add_constraint(new btGearConstraint(
+                *center.component<lamp::components::rigidbody>()->body,
+                *left.component<lamp::components::rigidbody>()->body, axis, axis), true);
+        }
 
 		ImGui::End();
 	}

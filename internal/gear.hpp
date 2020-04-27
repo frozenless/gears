@@ -7,6 +7,5 @@ struct Gear
 	float inner;
 	float depth;
 
-	int32_t  teeth;
-	lamp::v3 position;
+	int32_t teeth;
 };
