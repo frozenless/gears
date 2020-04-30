@@ -94,7 +94,7 @@ void Gears::init()
 
 	_physics.init_renderer(debug_mesh, btIDebugDraw::DBG_DrawWireframe);
 
-	_light.position = lamp::v3( 2.5f, 2.5f, 5.0f);
+	_light.position = lamp::v3( 2.5f, 2.5f, 10.0f);
 	_light.ambient  = 0.1f;
 	_light.diffuse  = 0.7f;
 	_light.specular = 0.3f;
@@ -185,11 +185,11 @@ void Gears::draw()
 
 		if (ImGui::Button("Generate"))
         {
-            const float x = gear.outer * 2.0f;
+            const float offset = gear.outer * 2.0f;
 
-            auto right  = create(lamp::v3(position.x + x, position.y, position.z), lamp::Random::color(), false, 3.5f);
-            auto center = create(lamp::v3(    position.x,     position.y, position.z), lamp::Random::color(), true,  0);
-            auto left   = create(lamp::v3(position.x - x,  position.y, position.z), lamp::Random::color(), false, 0);
+            auto right  = create(lamp::v3(position.x + offset, position.y, position.z), lamp::Random::color(), false, 0.0f);
+            auto center = create(lamp::v3(position.x + 0.0f,   position.y, position.z), lamp::Random::color(), true,  3.5f);
+            auto left   = create(lamp::v3(position.x - offset, position.y, position.z), lamp::Random::color(), false, 0.0f);
 
             _physics.add_constraint(new btGearConstraint(
                 *right.component<lamp::components::rigidbody>()->body,
