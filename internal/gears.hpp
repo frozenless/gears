@@ -3,9 +3,6 @@
 
 class Gears : public lamp::Game
 {
-public:
-	Gears();
-
 protected:
 	void init()    final;
 	void release() final;
@@ -13,12 +10,15 @@ protected:
 	void update(float delta_time) final;
 	void draw() final;
 
-	void input(int32_t action, int32_t key) override;
+	void input(int32_t action, int32_t key) final;
 
-	static lamp::gl::mesh_ptr create(const Gear& gear);
-		   entityx::Entity    create(const lamp::v3& position, const lamp::math::rgb& color, bool middle, float speed);
+    entityx::Entity create(const lamp::v3& position, const lamp::math::rgb& color, bool middle, float speed = 0.0f);
 
 private:
-	bool _show_menu;
-	Gear  gear;
+    [[nodiscard]] lamp::gl::mesh_ptr create()               const;
+    [[nodiscard]] lamp::gl::mesh_ptr create(int32_t length) const;
+
+	bool _show_menu = false;
+
+	Gear gear;
 };
