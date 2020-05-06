@@ -25,6 +25,7 @@
 lamp::gl::program_ptr model_shader;
 lamp::gl::program_ptr debug_shader;
 
+lamp::gl::buffer_ptr camera_position_buffer;
 lamp::gl::buffer_ptr camera_buffer;
 lamp::gl::buffer_ptr light_buffer;
 
@@ -93,7 +94,7 @@ void Gears::init()
 	_light.position = lamp::v3( 2.5f, 2.5f, 10.0f);
 	_light.ambient  = 0.1f;
 	_light.diffuse  = 0.7f;
-	_light.specular = 0.3f;
+	_light.specular = 0.65f;
 
 	_ecs.systems.add<lamp::systems::Renderer>()->init();
 	_ecs.systems.add<lamp::systems::Physics>();
@@ -112,7 +113,7 @@ void Gears::init()
 	renderer->mesh     = debug_mesh;
 	renderer->material = nullptr;
 
-	camera_position = { 0.0f, 0.0f, -15.0f };
+	camera_position = { 0.0f, 0.0f, 15.0f };
 	camera.view(camera_position);
 	camera.perspective();
 
@@ -125,6 +126,11 @@ void Gears::init()
 
 	light_buffer = lamp::Assets::create(GL_UNIFORM_BUFFER, std::make_pair(u_light.data(), u_light.size()), GL_STATIC_DRAW);
 	light_buffer->bind(1);
+
+	const std::array<lamp::v3, 1> u_camera_position = { camera_position };
+
+	camera_position_buffer = lamp::Assets::create(GL_UNIFORM_BUFFER, std::make_pair(u_camera_position.data(), u_camera_position.size()), GL_STATIC_DRAW);
+    camera_position_buffer->bind(4);
 
 	lamp::Editor::init(static_cast<GLFWwindow*>(_window));
 }
@@ -165,6 +171,9 @@ void Gears::update(float delta_time)
 	{
         const std::array<lamp::m4, 1> uniforms = { camera.view() };
         camera_buffer->sub_data(std::make_pair(uniforms.data(), uniforms.size()), 0);
+
+        const std::array<lamp::v3, 1> u_camera_position = { camera_position };
+        camera_position_buffer->data(u_camera_position);
 	}
 }
 
@@ -237,7 +246,7 @@ lamp::gl::mesh_ptr Gears::create() const
 	std::vector<uint32_t> indices;
 
 	vertices.reserve(static_cast<size_t>(80) * gear.teeth);
-	indices.reserve(static_cast<size_t>(66) * gear.teeth);
+	indices.reserve(static_cast<size_t>(66)  * gear.teeth);
 
 	const float half_depth = gear.depth * 0.5f;
 
@@ -283,28 +292,23 @@ lamp::gl::mesh_ptr Gears::create() const
 			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     half_width), normal,
 			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, half_width), normal,
 			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, half_width), normal,
-			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, half_width), normal
+			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, half_width), normal,
+
+            lamp::v3(r1 * cos_ta,     r1 * sin_ta,     half_width), normal,
+            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, half_width), normal,
+            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, half_width), normal,
+            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, half_width), normal
 		});
 
 		indices.insert(indices.end(), {
 			index,     index + 1, index + 2,
 			index + 1, index + 3, index + 2,
 			index + 2, index + 3, index + 4,
-			index + 3, index + 5, index + 4
-		}); index += 6;
+			index + 3, index + 5, index + 4,
 
-		// front sides of teeth
-		vertices.insert(vertices.end(), {
-			lamp::v3(r1 * cos_ta,     r1 * sin_ta,     half_width), normal,
-			lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, half_width), normal,
-			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, half_width), normal,
-			lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, half_width), normal
-		});
-
-		indices.insert(indices.end(), {
-			index,     index + 1, index + 2,
-			index + 1, index + 3, index + 2
-		}); index += 4;
+            index + 6, index + 7, index + 8,
+            index + 7, index + 9, index + 8
+		}); index += 10;
 
 		// back face
 		normal = lamp::v3(0.0f, 0.0f, -1.0f);
@@ -314,28 +318,23 @@ lamp::gl::mesh_ptr Gears::create() const
 			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal,
 			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -half_width), normal,
 			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, -half_width), normal,
-			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -half_width), normal
+			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -half_width), normal,
+
+            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal,
+            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -half_width), normal,
+            lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -half_width), normal,
+            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -half_width), normal
 		});
 
 		indices.insert(indices.end(), {
 			index,     index + 1, index + 2,
 			index + 1, index + 3, index + 2,
 			index + 2, index + 3, index + 4,
-			index + 3, index + 5, index + 4
-		}); index += 6;
+			index + 3, index + 5, index + 4,
 
-		// back sides of teeth
-		vertices.insert(vertices.end(), {
-			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal,
-			lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -half_width), normal,
-			lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -half_width), normal,
-			lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -half_width), normal
-		});
-
-		indices.insert(indices.end(), {
-			index,     index + 1, index + 2,
-			index + 1, index + 3, index + 2
-		}); index += 4;
+            index + 6, index + 7, index + 8,
+            index + 7, index + 9, index + 8
+		}); index += 10;
 
 		// draw outward faces of teeth
 		normal = lamp::v3(v1, -u1, 0.0f);
