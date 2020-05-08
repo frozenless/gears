@@ -96,7 +96,7 @@ void Gears::init()
 
 	_physics.init_renderer(debug_mesh, btIDebugDraw::DBG_DrawWireframe);
 
-	_light.position = lamp::v3( 2.5f, 2.5f, 10.0f);
+	_light.position = { 0.0f, 0.0f, 10.0f };
 	_light.ambient  = 0.1f;
 	_light.diffuse  = 0.7f;
 	_light.specular = 0.65f;
@@ -181,6 +181,15 @@ void Gears::update(float delta_time)
         const std::array<lamp::v3, 1> u_camera_position = { camera_position };
         camera_position_buffer->data(u_camera_position);
 	}
+
+	const float value  = Game::timer.elapsed();
+	const float radius = 10.0f;
+
+    _light.position.x = radius * std::cosf(value);
+	_light.position.z = radius * std::sinf(value);
+
+    const std::array<lamp::components::light, 1> uniforms = { _light };
+    light_buffer->data(uniforms);
 }
 
 void Gears::draw()
