@@ -9,7 +9,6 @@
 #include "engine/components/rigidbody.hpp"
 
 #include "engine/material.hpp"
-#include "engine/camera.hpp"
 #include "engine/random.inl"
 
 #include "gl/renderer.hpp"
@@ -67,12 +66,14 @@ void Gears::init()
 {
     glfwSetScrollCallback(static_cast<GLFWwindow*>(_window), [](GLFWwindow* ptr, const double, const double offset) noexcept {
 
-        static float fov = 60.0f;
-        fov -= static_cast<float>(offset);
+        static float value = 60.0f;
+
+        value -= static_cast<float>(offset * 2.0f);
+        value  = glm::clamp(value, 1.0f, 60.0f);
 
         auto& camera = static_cast<Game*>(glfwGetWindowUserPointer(ptr))->camera();
 
-        camera.fov(glm::clamp(fov, 1.0f, 60.0f));
+        camera.fov(value);
         camera.update();
 
         const std::array<lamp::m4, 1> uniforms = { camera.proj() };
@@ -218,7 +219,7 @@ void Gears::draw()
 
 	if (_show_menu) {
 
-		static auto count    = 3;
+		static int32_t count = 2;
 		static auto position = glm::zero<lamp::v3>();
 
 		ImGui::Begin("Gear", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
@@ -234,17 +235,22 @@ void Gears::draw()
         {
             const float offset = gear.outer * 2.0f;
 
-            auto right  = create(lamp::v3(position.x + offset, position.y, position.z), lamp::Random::color(), false);
-            auto center = create(lamp::v3(position.x + 0.0f,   position.y, position.z), lamp::Random::color(), true, 3.5f);
-            auto left   = create(lamp::v3(position.x - offset, position.y, position.z), lamp::Random::color(), false);
+            auto last_one = create(position, lamp::Random::color(), true, static_cast<float>(count + 1.5f));
 
-            _physics.add_constraint(new btGearConstraint(
-                *right.component<lamp::components::rigidbody>()->body,
-                *center.component<lamp::components::rigidbody>()->body, axis, axis), true);
+            for (uint32_t i = 1; i <= count; i++) {
 
-            _physics.add_constraint(new btGearConstraint(
-                *center.component<lamp::components::rigidbody>()->body,
-                *left.component<lamp::components::rigidbody>()->body, axis, axis), true);
+                bool middle = false;
+
+                if (i % 2 == 0) middle = true;
+
+                auto new_one = create({ position.x + (i * offset), position.y, position.z }, lamp::Random::color(), middle);
+
+                _physics.add_constraint(new btGearConstraint(
+                *last_one.component<lamp::components::rigidbody>()->body,
+                 *new_one.component<lamp::components::rigidbody>()->body, axis, axis), true);
+
+                last_one = new_one;
+            }
         }
 
 		ImGui::End();
