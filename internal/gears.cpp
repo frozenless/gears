@@ -22,6 +22,8 @@
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 
+const btVector3 axis(0, 0, 1);
+
 lamp::gl::program_ptr model_shader;
 lamp::gl::program_ptr debug_shader;
 
@@ -30,13 +32,7 @@ lamp::gl::buffer_ptr camera_buffer;
 lamp::gl::buffer_ptr light_buffer;
 
 lamp::gl::mesh_ptr debug_mesh;
-
-const     btVector3 axis(0, 0, 1);
-constexpr lamp::v2  size(1280, 768);
-
-lamp::Camera camera(size);
-lamp::v3     camera_position;
-lamp::v2     mouse;
+lamp::v3           camera_position;
 
 void Gears::input(const int32_t action, const int32_t key)
 {
@@ -47,8 +43,7 @@ void Gears::input(const int32_t action, const int32_t key)
 
         } else if (key == GLFW_MOUSE_BUTTON_1) {
 
-			auto game = static_cast<Gears*>(glfwGetWindowUserPointer(static_cast<GLFWwindow*>(_window)));
-			auto hit  = game->physics().ray(camera.screen_to_world(mouse));
+			auto hit = _physics.ray(_camera.to_world(_mouse));
 
 			if (hit.hasHit()) {
 
@@ -70,9 +65,19 @@ void Gears::input(const int32_t action, const int32_t key)
 
 void Gears::init()
 {
-	glfwSetCursorPosCallback(static_cast<GLFWwindow*>(_window), [](GLFWwindow*, const double x, const double y) noexcept {
-		mouse = lamp::v2(x, y);
-	});
+    glfwSetScrollCallback(static_cast<GLFWwindow*>(_window), [](GLFWwindow* ptr, const double, const double offset) noexcept {
+
+        static float fov = 60.0f;
+        fov -= static_cast<float>(offset);
+
+        auto& camera = static_cast<Game*>(glfwGetWindowUserPointer(ptr))->camera();
+
+        camera.fov(glm::clamp(fov, 1.0f, 60.0f));
+        camera.update();
+
+        const std::array<lamp::m4, 1> uniforms = { camera.proj() };
+        camera_buffer->sub_data(std::make_pair(uniforms.data(), uniforms.size()), 1);
+    });
 
 	auto model_vert = lamp::Assets::create("shaders/glsl/model.vert", GL_VERTEX_SHADER);
 	auto model_frag = lamp::Assets::create("shaders/glsl/model.frag", GL_FRAGMENT_SHADER);
@@ -114,10 +119,11 @@ void Gears::init()
 	renderer->material = nullptr;
 
 	camera_position = { 0.0f, 0.0f, 15.0f };
-	camera.view(camera_position);
-	camera.perspective();
 
-	const std::array<lamp::m4, 2> u_camera = { camera.view(), camera.proj() };
+	_camera.view(camera_position);
+	_camera.update();
+
+	const std::array<lamp::m4, 2> u_camera = { _camera.view(), _camera.proj() };
 
 	camera_buffer = lamp::Assets::create(GL_UNIFORM_BUFFER, std::make_pair(u_camera.data(), u_camera.size()), GL_STATIC_DRAW);
 	camera_buffer->bind(0);
@@ -153,23 +159,23 @@ void Gears::update(float delta_time)
 
 	if (glfwGetKey(static_cast<GLFWwindow*>(_window), GLFW_KEY_LEFT) == GLFW_PRESS) {
 
-        camera_position.x -= camera_speed * delta_time;
-        camera.view(camera_position);
+         camera_position.x -= camera_speed * delta_time;
+        _camera.view(camera_position);
 
         upload = true;
     }
 
 	if (glfwGetKey(static_cast<GLFWwindow*>(_window), GLFW_KEY_RIGHT) == GLFW_PRESS) {
 
-        camera_position.x += camera_speed * delta_time;
-        camera.view(camera_position);
+         camera_position.x += camera_speed * delta_time;
+        _camera.view(camera_position);
 
         upload = true;
 	}
 
 	if (upload)
-	{
-        const std::array<lamp::m4, 1> uniforms = { camera.view() };
+    {
+        const std::array<lamp::m4, 1> uniforms = { _camera.view() };
         camera_buffer->sub_data(std::make_pair(uniforms.data(), uniforms.size()), 0);
 
         const std::array<lamp::v3, 1> u_camera_position = { camera_position };
@@ -285,45 +291,41 @@ lamp::gl::mesh_ptr Gears::create() const
 		v1 /= len;
 
 		// front face
-		lamp::v3 normal = lamp::v3(0.0f, 0.0f, 1.0f);
+		lamp::v3 normal(0.0f, 0.0f, 1.0f);
 		vertices.insert(vertices.end(), {
-			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     half_width), normal,
-			lamp::v3(r1 * cos_ta,     r1 * sin_ta,     half_width), normal,
-			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     half_width), normal,
-			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, half_width), normal,
-			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, half_width), normal,
-			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, half_width), normal,
+			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     half_width), normal, // 0
+			lamp::v3(r1 * cos_ta,     r1 * sin_ta,     half_width), normal, // 1
+			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, half_width), normal, // 2
+			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, half_width), normal, // 3
+			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, half_width), normal, // 4
 
-            lamp::v3(r1 * cos_ta,     r1 * sin_ta,     half_width), normal,
-            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, half_width), normal,
-            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, half_width), normal,
-            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, half_width), normal
+            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, half_width), normal, // 5
+            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, half_width), normal  // 6
 		});
 
 		indices.insert(indices.end(), {
-			index,     index + 1, index + 2,
-			index + 1, index + 3, index + 2,
-			index + 2, index + 3, index + 4,
-			index + 3, index + 5, index + 4,
+			index,     index + 1, index,
+			index + 1, index + 2, index,
+			index,     index + 2, index + 3,
+			index + 2, index + 4, index + 3,
 
-            index + 6, index + 7, index + 8,
-            index + 7, index + 9, index + 8
-		}); index += 10;
+            index + 1, index + 5, index + 2,
+            index + 5, index + 6, index + 2
+		}); index += 7;
 
 		// back face
-		normal = lamp::v3(0.0f, 0.0f, -1.0f);
+		normal.z = -1.0f;
 		vertices.insert(vertices.end(), {
-			lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -half_width), normal,
-			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -half_width), normal,
-			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal,
-			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -half_width), normal,
-			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, -half_width), normal,
-			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -half_width), normal,
+			lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -half_width), normal, // 0
+			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -half_width), normal, // 1
+			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal, // 2
+			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -half_width), normal, // 3
+			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, -half_width), normal, // 4
+			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -half_width), normal, // 5
 
-            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal,
-            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -half_width), normal,
-            lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -half_width), normal,
-            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -half_width), normal
+            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal, // 6
+            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -half_width), normal, // 7
+            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -half_width), normal  // 8
 		});
 
 		indices.insert(indices.end(), {
@@ -332,9 +334,9 @@ lamp::gl::mesh_ptr Gears::create() const
 			index + 2, index + 3, index + 4,
 			index + 3, index + 5, index + 4,
 
-            index + 6, index + 7, index + 8,
-            index + 7, index + 9, index + 8
-		}); index += 10;
+            index + 6, index + 7, index,
+            index + 7, index + 8, index
+		}); index += 9;
 
 		// draw outward faces of teeth
 		normal = lamp::v3(v1, -u1, 0.0f);
@@ -443,17 +445,17 @@ entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& c
 	}
 
 	auto body = new btRigidBody(info);
-	body->setLinearFactor(btVector3(1, 0, 0));
+	body->setLinearFactor({ 1, 0, 0 });
 	body->setUserIndex(static_cast<int32_t>(entity.id().id()));
 
 	if (speed > 0.0f)
 	{
-		body->setAngularVelocity(btVector3(0, 0, speed));
+		body->setAngularVelocity({ 0, 0, speed });
 		// body->setLinearVelocity(btVector3(0.3f, 0.0f, 0.0f));
 	}
 	else
 	{
-		body->setAngularFactor(btVector3(0, 0, 1));
+		body->setAngularFactor({ 0, 0, 1 });
 	}
 
 	entity.assign<lamp::components::rigidbody>()->body = body;
@@ -650,7 +652,7 @@ lamp::gl::mesh_ptr Gears::create(const int32_t length) const
 
 int main()
 {
-	Gears game; game.run({ "Gears", size, 8, false, false, true });
+	Gears game; game.run({ "Gears", 8, false, false, true }, { 1280, 768 });
 
 	return 0;
 }
