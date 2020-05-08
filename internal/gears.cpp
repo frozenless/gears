@@ -182,7 +182,7 @@ void Gears::update(float delta_time)
         camera_position_buffer->data(u_camera_position);
 	}
 
-	const float value  = Game::timer.elapsed();
+	const float value  = Game::timer.elapsed() * 2.0f;
 	const float radius = 10.0f;
 
     _light.position.x = radius * std::cosf(value);
