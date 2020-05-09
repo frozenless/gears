@@ -15,10 +15,12 @@ protected:
     entityx::Entity create(const lamp::v3& position, const lamp::math::rgb& color, bool middle, float speed = 0.0f);
 
 private:
-    [[nodiscard]] lamp::gl::mesh_ptr create()               const;
-    [[nodiscard]] lamp::gl::mesh_ptr create(int32_t length) const;
+    [[nodiscard]] lamp::gl::mesh_ptr create_gear()               const;
+    [[nodiscard]] lamp::gl::mesh_ptr create_rail(int32_t length) const;
 
 	bool _show_menu = false;
+
+    void create_plane();
 
 	Gear gear;
 };

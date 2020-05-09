@@ -11,9 +11,12 @@
 #include "engine/material.hpp"
 #include "engine/random.inl"
 
+#include "physics/utils.hpp"
+
 #include "gl/renderer.hpp"
 #include "gl/program.hpp"
 
+#include "importer.hpp"
 #include "editor.hpp"
 #include "assets.inl"
 
@@ -24,14 +27,12 @@
 const btVector3 axis(0, 0, 1);
 
 lamp::gl::program_ptr model_shader;
-lamp::gl::program_ptr debug_shader;
 
 lamp::gl::buffer_ptr camera_position_buffer;
 lamp::gl::buffer_ptr camera_buffer;
 lamp::gl::buffer_ptr light_buffer;
 
-lamp::gl::mesh_ptr debug_mesh;
-lamp::v3           camera_position;
+lamp::v3 camera_position;
 
 void Gears::input(const int32_t action, const int32_t key)
 {
@@ -46,14 +47,18 @@ void Gears::input(const int32_t action, const int32_t key)
 
 			if (hit.hasHit()) {
 
-                _ecs.entities.each<selectable>([](entityx::Entity entity, selectable& selectable) {
-                    selectable.selected = false;
-                });
+                if (int32_t index = hit.m_collisionObject->getUserIndex();
+                            index != -1) {
 
-				auto id     = _ecs.entities.create_id(hit.m_collisionObject->getUserIndex());
-                auto entity = _ecs.entities.get(id);
+                    _ecs.entities.each<selectable>([](entityx::Entity entity, selectable &selectable) {
+                        selectable.selected = false;
+                    });
 
-				entity.component<selectable>()->selected = true;
+                    auto id     = _ecs.entities.create_id(hit.m_collisionObject->getUserIndex());
+                    auto entity = _ecs.entities.get(id);
+
+                    entity.component<selectable>()->selected = true;
+                }
 			}
 
 		} else {
@@ -83,22 +88,10 @@ void Gears::init()
 	auto model_vert = lamp::Assets::create("shaders/glsl/model.vert", GL_VERTEX_SHADER);
 	auto model_frag = lamp::Assets::create("shaders/glsl/model.frag", GL_FRAGMENT_SHADER);
 
-	auto debug_vert = lamp::Assets::create("shaders/glsl/debug.vert", GL_VERTEX_SHADER);
-	auto debug_frag = lamp::Assets::create("shaders/glsl/debug.frag", GL_FRAGMENT_SHADER);
-
-	debug_shader = lamp::Assets::create(debug_vert, debug_frag);
 	model_shader = lamp::Assets::create(model_vert, model_frag);
 
-	lamp::gl::Layout layout;
-	layout.add<float>(3);
-	layout.add<float>(3);
-
-	debug_mesh = lamp::Assets::create(layout, GL_LINES, GL_DYNAMIC_DRAW);
-
-	_physics.init_renderer(debug_mesh, btIDebugDraw::DBG_DrawWireframe);
-
 	_light.position = { 0.0f, 0.0f, 10.0f };
-	_light.ambient  = 0.1f;
+	_light.ambient  = 0.4f;
 	_light.diffuse  = 0.7f;
 	_light.specular = 0.65f;
 
@@ -111,15 +104,9 @@ void Gears::init()
 	gear.width = 0.5f;
 	gear.teeth = 13;
 
-	auto debug    = _ecs.entities.create();
-	auto renderer = debug.assign<lamp::components::renderer>();
-	debug.assign<lamp::components::transform>()->world = glm::identity<lamp::m4>();
+	create_plane();
 
-	renderer->shader   = debug_shader;
-	renderer->mesh     = debug_mesh;
-	renderer->material = nullptr;
-
-	camera_position = { 0.0f, 0.0f, 15.0f };
+	camera_position = { 0.0f, 0.0f, 20.0f };
 
 	_camera.view(camera_position);
 	_camera.update();
@@ -144,7 +131,6 @@ void Gears::init()
 
 void Gears::release()
 {
-	debug_shader->release();
 	model_shader->release();
 
 	lamp::Editor::release();
@@ -213,6 +199,19 @@ void Gears::draw()
 			if (selectable.selected)
 			{
 				lamp::Editor::draw(entity.component<lamp::components::renderer>()->material);
+
+                ImGui::Begin("Gear", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+
+                if (ImGui::Button("Remove"))
+                {
+                    auto body = entity.component<lamp::components::rigidbody>()->body;
+                    auto constraint = body->getConstraintRef(0);
+
+                    body->setLinearFactor({ 1, 1, 1 });
+                    body->removeConstraintRef(constraint);
+                }
+
+                ImGui::End();
 			}
 		});
 	}
@@ -222,7 +221,7 @@ void Gears::draw()
 		static int32_t count = 2;
 		static auto position = glm::zero<lamp::v3>();
 
-		ImGui::Begin("Gear", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+		ImGui::Begin("Generator", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 
 		ImGui::InputFloat3("Position",    glm::value_ptr(position), 1);
 		ImGui::InputFloat("Outer Radius", &gear.outer, 0.1f);
@@ -259,7 +258,7 @@ void Gears::draw()
 	lamp::Editor::end();
 }
 
-lamp::gl::mesh_ptr Gears::create() const
+lamp::gl::mesh_ptr Gears::create_gear() const
 {
 	uint32_t index = 0;
 
@@ -438,7 +437,7 @@ entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& c
     entity.assign<selectable>();
 
 	renderer->shader = model_shader;
-    renderer->mesh   = this->create();
+    renderer->mesh   = create_gear();
 
 	renderer->material = std::make_shared<lamp::Material>();
 	renderer->material->color = color;
@@ -460,7 +459,7 @@ entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& c
 	}
 
 	auto body = new btRigidBody(info);
-	body->setLinearFactor({ 1, 0, 0 });
+	body->setLinearFactor({ 0, 0, 0 });
 	body->setUserIndex(static_cast<int32_t>(entity.id().id()));
 
 	if (speed > 0.0f)
@@ -480,7 +479,7 @@ entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& c
 	return entity;
 }
 
-lamp::gl::mesh_ptr Gears::create(const int32_t length) const
+lamp::gl::mesh_ptr Gears::create_rail(const int32_t length) const
 {
     uint32_t index = 0;
 
@@ -663,6 +662,27 @@ lamp::gl::mesh_ptr Gears::create(const int32_t length) const
     layout.add<float>(3);
 
     return lamp::Assets::create(vertices, indices, layout, GL_TRIANGLES, GL_STATIC_DRAW);
+}
+
+void Gears::create_plane()
+{
+    constexpr lamp::v3 position(0.0f, -4.0f, 0.0f);
+
+    auto plane     = _ecs.entities.create();
+    auto renderer  = plane.assign<lamp::components::renderer>();
+
+    renderer->material = std::make_shared<lamp::Material>();
+    renderer->material->color = { 0.8f, 0.4f, 0.4f };
+    renderer->shader   = model_shader;
+    renderer->mesh     = lamp::Importer::import("models/plane.obj");
+
+    plane.assign<lamp::components::transform>()->world = glm::translate(glm::identity<lamp::m4>(), position);
+
+    btRigidBody::btRigidBodyConstructionInfo info(0.0f,
+                                                  new btDefaultMotionState(lamp::utils::from(position, glm::identity<lamp::quat>())),
+                                                  new btStaticPlaneShape({ 0, 1.0f, 0 }, 0));
+
+    _physics.add_rigidbody(new btRigidBody(info));
 }
 
 int main()
