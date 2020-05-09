@@ -199,26 +199,13 @@ void Gears::draw()
 			if (selectable.selected)
 			{
 				lamp::Editor::draw(entity.component<lamp::components::renderer>()->material);
-
-                ImGui::Begin("Gear", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
-
-                if (ImGui::Button("Remove"))
-                {
-                    auto body = entity.component<lamp::components::rigidbody>()->body;
-                    auto constraint = body->getConstraintRef(0);
-
-                    body->setLinearFactor({ 1, 1, 1 });
-                    body->removeConstraintRef(constraint);
-                }
-
-                ImGui::End();
 			}
 		});
 	}
 
 	if (_show_menu) {
 
-		static int32_t count = 2;
+		static int32_t count = 3;
 		static auto position = glm::zero<lamp::v3>();
 
 		ImGui::Begin("Generator", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
@@ -234,9 +221,9 @@ void Gears::draw()
         {
             const float offset = gear.outer * 2.0f;
 
-            auto last_one = create(position, lamp::Random::color(), true, static_cast<float>(count + 1.5f));
+            auto last_one = create(position, lamp::Random::color(), true, static_cast<float>(count + 0.5f));
 
-            for (uint32_t i = 1; i <= count; i++) {
+            for (uint32_t i = 1; i < count; i++) {
 
                 bool middle = false;
 
@@ -253,6 +240,28 @@ void Gears::draw()
         }
 
 		ImGui::End();
+
+        _ecs.entities.each<selectable>([](entityx::Entity entity, selectable& selectable) {
+
+            if (selectable.selected)
+            {
+                ImGui::Begin("Gear", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+
+                if (ImGui::Button("Remove"))
+                {
+                    auto body = entity.component<lamp::components::rigidbody>()->body;
+                    auto constraint = body->getConstraintRef(0);
+
+                    body->setLinearFactor({ 1, 1, 1 });
+                    body->setAngularFactor({ 1, 1, 1 });
+
+                    body->applyCentralImpulse({ 0, 0, -25.0});
+                    body->removeConstraintRef(constraint);
+                }
+
+                ImGui::End();
+            }
+        });
 	}
 
 	lamp::Editor::end();
@@ -445,7 +454,7 @@ entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& c
 	btVector3 inertia;
 	constexpr float mass = 6.28f;
 
-	auto shape = new btCylinderShapeZ(btVector3(gear.outer, gear.outer, gear.width));
+	auto shape = new btCylinderShapeZ(btVector3(gear.outer, gear.outer, gear.width / 2.0f));
 	shape->calculateLocalInertia(mass,inertia);
 
 	btRigidBody::btRigidBodyConstructionInfo info(mass, nullptr, shape, inertia);
