@@ -43,24 +43,25 @@ void Gears::input(const int32_t action, const int32_t key)
 
         } else if (key == GLFW_MOUSE_BUTTON_1) {
 
-			auto hit = _physics.ray(_camera.to_world(_mouse));
+		    if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow)) {
 
-			if (hit.hasHit()) {
+                auto hit = _physics.ray(_camera.to_world(_mouse));
 
-                if (int32_t index = hit.m_collisionObject->getUserIndex();
-                            index != -1) {
+                if (hit.hasHit()) {
 
-                    _ecs.entities.each<selectable>([](entityx::Entity entity, selectable &selectable) {
-                        selectable.selected = false;
-                    });
+                    if (const int32_t index = hit.m_collisionObject->getUserIndex(); index != -1) {
 
-                    auto id     = _ecs.entities.create_id(hit.m_collisionObject->getUserIndex());
-                    auto entity = _ecs.entities.get(id);
+                        _ecs.entities.each<selectable>([](entityx::Entity entity, selectable &selectable) {
+                            selectable.selected = false;
+                        });
 
-                    entity.component<selectable>()->selected = true;
+                        auto id = _ecs.entities.create_id(hit.m_collisionObject->getUserIndex());
+                        auto entity = _ecs.entities.get(id);
+
+                        entity.component<selectable>()->selected = true;
+                    }
                 }
 			}
-
 		} else {
 			Game::input(action, key);
 		}
@@ -211,7 +212,7 @@ void Gears::draw()
 
 		ImGui::Begin("Generator", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 
-		ImGui::InputFloat3("Position",    glm::value_ptr(position), 1);
+		ImGui::InputFloat3("Position",    glm::value_ptr(position), "%.1f");
 		ImGui::InputFloat("Outer Radius", &gear.outer, 0.1f);
 		ImGui::InputFloat("Inner Radius", &gear.inner, 0.1f);
 
@@ -507,8 +508,8 @@ lamp::gl::mesh_ptr Gears::create_rail(const int32_t length) const
 
 void Gears::create_plane(const lamp::math::rgb& color, const lamp::v3& position, const lamp::v3& axes, float angle)
 {
-    auto plane     = _ecs.entities.create();
-    auto renderer  = plane.assign<lamp::components::renderer>();
+    auto plane    = _ecs.entities.create();
+    auto renderer = plane.assign<lamp::components::renderer>();
 
     renderer->shader   = model_shader;
     renderer->mesh     = lamp::Importer::import("models/plane.obj");
