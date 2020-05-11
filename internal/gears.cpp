@@ -104,7 +104,8 @@ void Gears::init()
 	gear.width = 0.5f;
 	gear.teeth = 13;
 
-	create_plane();
+	create_plane({ 0.8f, 0.4f, 0.4f }, { 0.0f, -4.0f,   0.0f }, { 0, 0, 1 },  0.0f);
+    create_plane({ 0.6f, 0.4f, 0.2f }, { 0.0f, 16.0f, -20.0f }, { 1, 0, 0 }, 90.0f);
 
 	camera_position = { 0.0f, 0.0f, 20.0f };
 
@@ -243,7 +244,7 @@ void Gears::draw()
 
         _ecs.entities.each<selectable>([](entityx::Entity entity, selectable& selectable) {
 
-            if (selectable.selected)
+            if (entity.has_component<lamp::components::rigidbody>() && selectable.selected)
             {
                 ImGui::Begin("Gear", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 
@@ -504,28 +505,30 @@ lamp::gl::mesh_ptr Gears::create_rail(const int32_t length) const
     return lamp::Assets::create(vertices, indices, layout, GL_TRIANGLES, GL_STATIC_DRAW);
 }
 
-void Gears::create_plane()
+void Gears::create_plane(const lamp::math::rgb& color, const lamp::v3& position, const lamp::v3& axes, float angle)
 {
-    constexpr lamp::v3 position(0.0f, -4.0f, 0.0f);
-
     auto plane     = _ecs.entities.create();
     auto renderer  = plane.assign<lamp::components::renderer>();
 
     renderer->material = std::make_shared<lamp::Material>();
-    renderer->material->color = { 0.8f, 0.4f, 0.4f };
+    renderer->material->color = color;
     renderer->shader   = model_shader;
     renderer->mesh     = lamp::Importer::import("models/plane.obj");
 
-    plane.assign<lamp::components::transform>()->world = glm::translate(glm::identity<lamp::m4>(), position);
+    auto world = glm::translate(glm::identity<lamp::m4>(), position);
+    plane.assign<lamp::components::transform>()->world = glm::rotate(world, glm::radians(angle), axes);
+    plane.assign<selectable>();
 
     btRigidBody::btRigidBodyConstructionInfo info(0.0f,
                                                   new btDefaultMotionState(lamp::utils::from(position, glm::identity<lamp::quat>())),
                                                   new btStaticPlaneShape({ 0, 1.0f, 0 }, 0));
+    auto body = new btRigidBody(info);
+    body->setUserIndex(static_cast<int32_t>(plane.id().id()));
 
-    _physics.add_rigidbody(new btRigidBody(info));
+    _physics.add_rigidbody(body);
 }
 
-int main()
+int32_t main()
 {
 	Gears game; game.run({ "Gears", 8, false, false, true }, { 1280, 768 });
 
