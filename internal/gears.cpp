@@ -51,11 +51,11 @@ void Gears::input(const int32_t action, const int32_t key)
 
                     if (const int32_t index = hit.m_collisionObject->getUserIndex(); index != -1) {
 
-                        _ecs.entities.each<selectable>([](entityx::Entity entity, selectable &selectable) {
+                        _ecs.entities.each<selectable>([](entityx::Entity entity, selectable& selectable) {
                             selectable.selected = false;
                         });
 
-                        auto id = _ecs.entities.create_id(hit.m_collisionObject->getUserIndex());
+                        auto id     = _ecs.entities.create_id(hit.m_collisionObject->getUserIndex());
                         auto entity = _ecs.entities.get(id);
 
                         entity.component<selectable>()->selected = true;
@@ -455,7 +455,8 @@ entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& c
     renderer->mesh   = create_gear();
 
 	renderer->material = std::make_shared<lamp::Material>();
-	renderer->material->color = color;
+	renderer->material->color     = color;
+    renderer->material->shininess = 128.0f;
 
 	btVector3 inertia;
 	constexpr float mass = 6.28f;
@@ -514,7 +515,8 @@ void Gears::create_plane(const lamp::math::rgb& color, const lamp::v3& position,
     renderer->shader   = model_shader;
     renderer->mesh     = lamp::Importer::import("models/plane.obj");
     renderer->material = std::make_shared<lamp::Material>();
-    renderer->material->color = color;
+    renderer->material->color     = color;
+    renderer->material->shininess = 128.0f;
 
     auto world = glm::translate(glm::identity<lamp::m4>(), position);
     plane.assign<lamp::components::transform>()->world = glm::rotate(world, glm::radians(angle), axes);
