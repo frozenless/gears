@@ -250,13 +250,18 @@ void Gears::draw()
                 if (ImGui::Button("Remove"))
                 {
                     auto body = entity.component<lamp::components::rigidbody>()->body;
-                    auto constraint = body->getConstraintRef(0);
 
                     body->setLinearFactor({ 1, 1, 1 });
                     body->setAngularFactor({ 1, 1, 1 });
 
-                    body->applyCentralImpulse({ 0, 0, -25.0});
-                    body->removeConstraintRef(constraint);
+                    body->applyCentralImpulse({ 0, 0, -25.0 });
+
+                    for (int32_t i = 0; i < body->getNumConstraintRefs(); i++)
+                    {
+                        auto constraint = body->getConstraintRef(i);
+
+                        body->removeConstraintRef(constraint);
+                    }
                 }
 
                 ImGui::End();
@@ -315,51 +320,49 @@ lamp::gl::mesh_ptr Gears::create_gear() const
 
 		// front face
 		lamp::v3 normal(0.0f, 0.0f, 1.0f);
-		vertices.insert(vertices.end(), {
-			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     half_width), normal, // 0
-			lamp::v3(r1 * cos_ta,     r1 * sin_ta,     half_width), normal, // 1
-			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, half_width), normal, // 2
-			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, half_width), normal, // 3
-			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, half_width), normal, // 4
+        vertices.insert(vertices.end(), {
+            lamp::v3(r0 * cos_ta,     r0 * sin_ta,     half_width), normal, // 0
+            lamp::v3(r1 * cos_ta,     r1 * sin_ta,     half_width), normal, // 1
+            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, half_width), normal, // 2
+            lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, half_width), normal, // 3
+            lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, half_width), normal, // 4
 
             lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, half_width), normal, // 5
             lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, half_width), normal  // 6
-		});
+        });
 
-		indices.insert(indices.end(), {
-			index,     index + 1, index,
-			index + 1, index + 2, index,
-			index,     index + 2, index + 3,
-			index + 2, index + 4, index + 3,
+        indices.insert(indices.end(), {
+            index,     index + 1, index,
+            index + 1, index + 2, index,
+            index,     index + 2, index + 3,
+            index + 2, index + 4, index + 3,
 
             index + 1, index + 5, index + 2,
             index + 5, index + 6, index + 2
-		}); index += 7;
+        }); index += 7;
 
 		// back face
-		normal.z = -1.0f;
+        normal.z = -1.0f;
 		vertices.insert(vertices.end(), {
 			lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -half_width), normal, // 0
 			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -half_width), normal, // 1
 			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal, // 2
-			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -half_width), normal, // 3
-			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, -half_width), normal, // 4
-			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -half_width), normal, // 5
+			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, -half_width), normal, // 3
+			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -half_width), normal, // 4
 
-            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal, // 6
-            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -half_width), normal, // 7
-            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -half_width), normal  // 8
+            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -half_width), normal, // 5
+            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -half_width), normal  // 6
 		});
 
 		indices.insert(indices.end(), {
 			index,     index + 1, index + 2,
-			index + 1, index + 3, index + 2,
-			index + 2, index + 3, index + 4,
-			index + 3, index + 5, index + 4,
+			index + 1, index + 1, index + 2,
+			index + 2, index + 1, index + 3,
+			index + 1, index + 4, index + 3,
 
-            index + 6, index + 7, index,
-            index + 7, index + 8, index
-		}); index += 9;
+            index + 2, index + 5, index,
+            index + 5, index + 6, index
+		}); index += 7;
 
 		// draw outward faces of teeth
 		normal = lamp::v3(v1, -u1, 0.0f);
@@ -442,6 +445,7 @@ entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& c
 {
 	auto entity   = _ecs.entities.create();
 	auto renderer = entity.assign<lamp::components::renderer>();
+
 	entity.assign<lamp::components::transform>();
     entity.assign<selectable>();
 
@@ -454,7 +458,7 @@ entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& c
 	btVector3 inertia;
 	constexpr float mass = 6.28f;
 
-	auto shape = new btCylinderShapeZ(btVector3(gear.outer, gear.outer, gear.width / 2.0f));
+	auto shape = new btCylinderShapeZ({ gear.outer, gear.outer, gear.width / 2.0f });
 	shape->calculateLocalInertia(mass,inertia);
 
 	btRigidBody::btRigidBodyConstructionInfo info(mass, nullptr, shape, inertia);
@@ -490,181 +494,8 @@ entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& c
 
 lamp::gl::mesh_ptr Gears::create_rail(const int32_t length) const
 {
-    uint32_t index = 0;
-
     std::vector<lamp::v3> vertices;
     std::vector<uint32_t> indices;
-
-    vertices.reserve(static_cast<size_t>(80) * gear.teeth);
-    indices.reserve(static_cast<size_t>(66) * gear.teeth);
-
-    const float half_depth = gear.depth * 0.5f;
-
-    const float r0 = gear.outer - 1.0f;
-    const float r1 = gear.outer - half_depth;
-    const float r2 = gear.outer + half_depth;
-
-    const float da         = 2.0f * glm::pi<float>() / static_cast<float>(gear.teeth) / 4.0f;
-    const float half_width = gear.width * 0.5f;
-
-    for (int32_t i = 0; i < 1; i++) {
-
-        const float ta = static_cast<float>(i) * 2.0f * glm::pi<float>() / static_cast<float>(gear.teeth);
-
-        const float cos_ta = cos(ta);
-        const float cos_ta_1da = cos(ta + da);
-        const float cos_ta_2da = cos(ta + 2.0f * da);
-        const float cos_ta_3da = cos(ta + 3.0f * da);
-        const float cos_ta_4da = cos(ta + 4.0f * da);
-
-        const float sin_ta = sin(ta);
-        const float sin_ta_1da = sin(ta + da);
-        const float sin_ta_2da = sin(ta + 2.0f * da);
-        const float sin_ta_3da = sin(ta + 3.0f * da);
-        const float sin_ta_4da = sin(ta + 4.0f * da);
-
-        const float u2 = r1 * cos_ta_3da - r2 * cos_ta_2da;
-        const float v2 = r1 * sin_ta_3da - r2 * sin_ta_2da;
-
-        float u1 = r2 * cos_ta_1da - r1 * cos_ta;
-        float v1 = r2 * sin_ta_1da - r1 * sin_ta;
-
-        const float len = std::sqrt(u1 * u1 + v1 * v1);
-
-        u1 /= len;
-        v1 /= len;
-
-        // front face
-        lamp::v3 normal = lamp::v3(0.0f, 0.0f, 1.0f);
-        vertices.insert(vertices.end(), {
-            lamp::v3(r0 * cos_ta,     r0 * sin_ta,     half_width), normal,
-            lamp::v3(r1 * cos_ta,     r1 * sin_ta,     half_width), normal,
-            lamp::v3(r0 * cos_ta,     r0 * sin_ta,     half_width), normal,
-            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, half_width), normal,
-            lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, half_width), normal,
-            lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, half_width), normal
-        });
-
-        indices.insert(indices.end(), {
-            index,     index + 1, index + 2,
-            index + 1, index + 3, index + 2,
-            index + 2, index + 3, index + 4,
-            index + 3, index + 5, index + 4
-        }); index += 6;
-
-        // front sides of teeth
-        vertices.insert(vertices.end(), {
-            lamp::v3(r1 * cos_ta,     r1 * sin_ta,     half_width), normal,
-            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, half_width), normal,
-            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, half_width), normal,
-            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, half_width), normal
-        });
-
-        indices.insert(indices.end(), {
-            index,     index + 1, index + 2,
-            index + 1, index + 3, index + 2
-        }); index += 4;
-
-        // back face
-        normal = lamp::v3(0.0f, 0.0f, -1.0f);
-        vertices.insert(vertices.end(), {
-            lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -half_width), normal,
-            lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -half_width), normal,
-            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal,
-            lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -half_width), normal,
-            lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, -half_width), normal,
-            lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -half_width), normal
-        });
-
-        indices.insert(indices.end(), {
-            index,     index + 1, index + 2,
-            index + 1, index + 3, index + 2,
-            index + 2, index + 3, index + 4,
-            index + 3, index + 5, index + 4
-        }); index += 6;
-
-        // back sides of teeth
-        vertices.insert(vertices.end(), {
-            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal,
-            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -half_width), normal,
-            lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -half_width), normal,
-            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -half_width), normal
-        });
-
-        indices.insert(indices.end(), {
-            index,     index + 1, index + 2,
-            index + 1, index + 3, index + 2
-        }); index += 4;
-
-        // draw outward faces of teeth
-        normal = lamp::v3(v1, -u1, 0.0f);
-        vertices.insert(vertices.end(), {
-            lamp::v3(r1 * cos_ta,     r1 * sin_ta,      half_width), normal,
-            lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -half_width), normal,
-            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da,  half_width), normal,
-            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -half_width), normal
-        });
-
-        indices.insert(indices.end(), {
-            index,     index + 1, index + 2,
-            index + 1, index + 3, index + 2
-        }); index += 4;
-
-        normal = lamp::v3(cos_ta, sin_ta, 0.0f);
-        vertices.insert(vertices.end(), {
-            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da,  half_width), normal,
-            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -half_width), normal,
-            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da,  half_width), normal,
-            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -half_width), normal
-        });
-
-        indices.insert(indices.end(), {
-            index,     index + 1, index + 2,
-            index + 1, index + 3, index + 2
-        }); index += 4;
-
-        normal = lamp::v3(v2, -u2, 0.0f);
-        vertices.insert(vertices.end(), {
-            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da,  half_width), normal,
-            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -half_width), normal,
-            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da,  half_width), normal,
-            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal
-        });
-
-        indices.insert(indices.end(), {
-            index,     index + 1, index + 2,
-            index + 1, index + 3, index + 2
-        }); index += 4;
-
-        normal = lamp::v3(cos_ta, sin_ta, 0.0f);
-        vertices.insert(vertices.end(), {
-            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da,  half_width), normal,
-            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal,
-            lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da,  half_width), normal,
-            lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, -half_width), normal
-        });
-
-        indices.insert(indices.end(), {
-            index,     index + 1, index + 2,
-            index + 1, index + 3, index + 2
-        }); index += 4;
-
-        // draw inside radius cylinder
-        const lamp::v3 normal_1(-cos_ta,     -sin_ta,     0.0f);
-        const lamp::v3 normal_2(-cos_ta_4da, -sin_ta_4da, 0.0f);
-
-        vertices.insert(vertices.end(), {
-            lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -half_width), normal_1,
-            lamp::v3(r0 * cos_ta,     r0 * sin_ta,      half_width), normal_1,
-            lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -half_width), normal_2,
-            lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da,  half_width), normal_2
-        });
-
-        indices.insert(indices.end(), {
-            index,     index + 1, index + 2,
-            index + 1, index + 3, index + 2
-        }); index += 4;
-    }
 
     lamp::gl::Layout layout;
     layout.add<float>(3);
