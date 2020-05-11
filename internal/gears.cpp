@@ -510,10 +510,10 @@ void Gears::create_plane(const lamp::math::rgb& color, const lamp::v3& position,
     auto plane     = _ecs.entities.create();
     auto renderer  = plane.assign<lamp::components::renderer>();
 
-    renderer->material = std::make_shared<lamp::Material>();
-    renderer->material->color = color;
     renderer->shader   = model_shader;
     renderer->mesh     = lamp::Importer::import("models/plane.obj");
+    renderer->material = std::make_shared<lamp::Material>();
+    renderer->material->color = color;
 
     auto world = glm::translate(glm::identity<lamp::m4>(), position);
     plane.assign<lamp::components::transform>()->world = glm::rotate(world, glm::radians(angle), axes);
