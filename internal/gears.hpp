@@ -15,7 +15,7 @@ protected:
     entityx::Entity create(const lamp::v3& position, const lamp::math::rgb& color, bool middle, float speed = 0.0f);
 
 private:
-    void create_plane(const lamp::math::rgb& color, const lamp::v3& position, const lamp::v3& axes, float angle);
+    void create_plane(const lamp::math::rgb& color, const lamp::v3& position, const lamp::v3& normal, const lamp::v3& axes, float angle);
 
     [[nodiscard]] lamp::gl::mesh_ptr create_gear()               const;
     [[nodiscard]] lamp::gl::mesh_ptr create_rail(int32_t length) const;

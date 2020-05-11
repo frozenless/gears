@@ -105,8 +105,8 @@ void Gears::init()
 	gear.width = 0.5f;
 	gear.teeth = 13;
 
-	create_plane({ 0.8f, 0.4f, 0.4f }, { 0.0f, -4.0f,   0.0f }, { 0, 0, 1 },  0.0f);
-    create_plane({ 0.6f, 0.4f, 0.2f }, { 0.0f, 16.0f, -20.0f }, { 1, 0, 0 }, 90.0f);
+	create_plane({ 0.8f, 0.4f, 0.4f }, { 0.0f, -4.0f,   0.0f }, { 0, 1, 0 }, { 0, 0, 1 },  0.0f);
+    create_plane({ 0.6f, 0.4f, 0.2f }, { 0.0f, 16.0f, -20.0f }, { 0, 0, 1 }, { 1, 0, 0 }, 90.0f);
 
 	camera_position = { 0.0f, 0.0f, 20.0f };
 
@@ -506,7 +506,7 @@ lamp::gl::mesh_ptr Gears::create_rail(const int32_t length) const
     return lamp::Assets::create(vertices, indices, layout, GL_TRIANGLES, GL_STATIC_DRAW);
 }
 
-void Gears::create_plane(const lamp::math::rgb& color, const lamp::v3& position, const lamp::v3& axes, float angle)
+void Gears::create_plane(const lamp::math::rgb& color, const lamp::v3& position, const lamp::v3& normal, const lamp::v3& axes, float angle)
 {
     auto plane    = _ecs.entities.create();
     auto renderer = plane.assign<lamp::components::renderer>();
@@ -522,7 +522,7 @@ void Gears::create_plane(const lamp::math::rgb& color, const lamp::v3& position,
 
     btRigidBody::btRigidBodyConstructionInfo info(0.0f,
                                                   new btDefaultMotionState(lamp::utils::from(position, glm::identity<lamp::quat>())),
-                                                  new btStaticPlaneShape({ 0, 1.0f, 0 }, 0));
+                                                  new btStaticPlaneShape({ normal.x, normal.y, normal.z }, 0));
     auto body = new btRigidBody(info);
     body->setUserIndex(static_cast<int32_t>(plane.id().id()));
 
