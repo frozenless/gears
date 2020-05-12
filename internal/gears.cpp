@@ -138,7 +138,7 @@ void Gears::release()
 	lamp::Editor::release();
 }
 
-void Gears::update(float delta_time)
+void Gears::update(const float delta_time)
 {
 	_ecs.systems.update<lamp::systems::Physics>(delta_time);
 
@@ -223,15 +223,16 @@ void Gears::draw()
         {
             const float offset = gear.outer * 2.0f;
 
-            auto last_one = create(position, lamp::Random::color(), true, static_cast<float>(count + 0.5f));
+            lamp::v3 new_position = position;
+            new_position.x -= (count * offset) / 2.0f - gear.outer;
+
+            auto last_one = create(new_position, lamp::Random::color(), true, static_cast<float>(count + 0.5f));
 
             for (uint32_t i = 1; i < count; i++) {
 
-                bool middle = false;
+                new_position.x += offset;
 
-                if (i % 2 == 0) middle = true;
-
-                auto new_one = create({ position.x + (i * offset), position.y, position.z }, lamp::Random::color(), middle);
+                auto new_one = create(new_position, lamp::Random::color(), i % 2 == 0);
 
                 _physics.add_constraint(new btGearConstraint(
                 *last_one.component<lamp::components::rigidbody>()->body,
@@ -507,7 +508,7 @@ lamp::gl::mesh_ptr Gears::create_rail(const int32_t length) const
     return lamp::Assets::create(vertices, indices, layout, GL_TRIANGLES, GL_STATIC_DRAW);
 }
 
-void Gears::create_plane(const lamp::math::rgb& color, const lamp::v3& position, const lamp::v3& normal, const lamp::v3& axes, float angle)
+void Gears::create_plane(const lamp::math::rgb& color, const lamp::v3& position, const lamp::v3& normal, const lamp::v3& axes, const float angle)
 {
     auto plane    = _ecs.entities.create();
     auto renderer = plane.assign<lamp::components::renderer>();
