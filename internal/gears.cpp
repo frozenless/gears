@@ -256,7 +256,7 @@ void Gears::draw()
                     body->setLinearFactor({ 1, 1, 1 });
                     body->setAngularFactor({ 1, 1, 1 });
 
-                    body->applyCentralImpulse({ 0, 0, -25.0 });
+                    body->applyCentralImpulse({ 0, 0, -25.0f });
 
                     for (int32_t i = 0; i < body->getNumConstraintRefs(); i++)
                     {

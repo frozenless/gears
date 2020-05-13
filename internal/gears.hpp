@@ -1,6 +1,8 @@
 #include "game.hpp"
 #include "gear.hpp"
 
+#include "engine/mesh.hpp"
+
 class Gears : public lamp::Game
 {
 protected:
