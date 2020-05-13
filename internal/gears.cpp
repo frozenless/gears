@@ -8,8 +8,7 @@
 #include "engine/components/renderer.hpp"
 #include "engine/components/rigidbody.hpp"
 
-#include "engine/material.hpp"
-#include "engine/random.inl"
+#include "common/random.hpp"
 
 #include "physics/utils.hpp"
 
@@ -275,7 +274,7 @@ void Gears::draw()
 	lamp::Editor::end();
 }
 
-lamp::gl::mesh_ptr Gears::create_gear() const
+std::shared_ptr<lamp::Mesh> Gears::create_gear() const
 {
 	uint32_t index = 0;
 
@@ -291,8 +290,8 @@ lamp::gl::mesh_ptr Gears::create_gear() const
 	const float r1 = gear.outer - half_depth;
 	const float r2 = gear.outer + half_depth;
 
-	const float da         = 2.0f * glm::pi<float>() / static_cast<float>(gear.teeth) / 4.0f;
-	const float half_width = gear.width * 0.5f;
+	const float da = 2.0f * glm::pi<float>() / static_cast<float>(gear.teeth) / 4.0f;
+	const float hf = gear.width * 0.5f;
 
 	for (int32_t i = 0; i < gear.teeth; i++) {
 
@@ -324,14 +323,14 @@ lamp::gl::mesh_ptr Gears::create_gear() const
 		// front face
 		lamp::v3 normal(0.0f, 0.0f, 1.0f);
         vertices.insert(vertices.end(), {
-            lamp::v3(r0 * cos_ta,     r0 * sin_ta,     half_width), normal, // 0
-            lamp::v3(r1 * cos_ta,     r1 * sin_ta,     half_width), normal, // 1
-            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, half_width), normal, // 2
-            lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, half_width), normal, // 3
-            lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, half_width), normal, // 4
+            lamp::v3(r0 * cos_ta,     r0 * sin_ta,     hf), normal, // 0
+            lamp::v3(r1 * cos_ta,     r1 * sin_ta,     hf), normal, // 1
+            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, hf), normal, // 2
+            lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, hf), normal, // 3
+            lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, hf), normal, // 4
 
-            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, half_width), normal, // 5
-            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, half_width), normal  // 6
+            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, hf), normal, // 5
+            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, hf), normal  // 6
         });
 
         indices.insert(indices.end(), {
@@ -347,14 +346,14 @@ lamp::gl::mesh_ptr Gears::create_gear() const
 		// back face
         normal.z = -1.0f;
 		vertices.insert(vertices.end(), {
-			lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -half_width), normal, // 0
-			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -half_width), normal, // 1
-			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal, // 2
-			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, -half_width), normal, // 3
-			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -half_width), normal, // 4
+            lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -hf), normal, // 0
+			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -hf), normal, // 1
+			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -hf), normal, // 2
+			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, -hf), normal, // 3
+			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -hf), normal, // 4
 
-            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -half_width), normal, // 5
-            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -half_width), normal  // 6
+            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -hf), normal, // 5
+            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -hf), normal  // 6
 		});
 
 		indices.insert(indices.end(), {
@@ -370,10 +369,10 @@ lamp::gl::mesh_ptr Gears::create_gear() const
 		// draw outward faces of teeth
 		normal = lamp::v3(v1, -u1, 0.0f);
 		vertices.insert(vertices.end(), {
-			lamp::v3(r1 * cos_ta,     r1 * sin_ta,      half_width), normal,
-			lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -half_width), normal,
-			lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da,  half_width), normal,
-			lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -half_width), normal
+            lamp::v3(r1 * cos_ta,     r1 * sin_ta,      hf), normal,
+            lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -hf), normal,
+            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da,  hf), normal,
+            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -hf), normal
 		});
 
 		indices.insert(indices.end(), {
@@ -383,10 +382,10 @@ lamp::gl::mesh_ptr Gears::create_gear() const
 
 		normal = lamp::v3(cos_ta, sin_ta, 0.0f);
 		vertices.insert(vertices.end(), {
-			lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da,  half_width), normal,
-			lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -half_width), normal,
-			lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da,  half_width), normal,
-			lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -half_width), normal
+            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da,  hf), normal,
+            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -hf), normal,
+            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da,  hf), normal,
+            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -hf), normal
 		});
 
 		indices.insert(indices.end(), {
@@ -396,10 +395,10 @@ lamp::gl::mesh_ptr Gears::create_gear() const
 
 		normal = lamp::v3(v2, -u2, 0.0f);
 		vertices.insert(vertices.end(), {
-			lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da,  half_width), normal,
-			lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -half_width), normal,
-			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da,  half_width), normal,
-			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal
+            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da,  hf), normal,
+            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -hf), normal,
+            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da,  hf), normal,
+            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -hf), normal
 		});
 
 		indices.insert(indices.end(), {
@@ -409,10 +408,10 @@ lamp::gl::mesh_ptr Gears::create_gear() const
 
 		normal = lamp::v3(cos_ta, sin_ta, 0.0f);
 		vertices.insert(vertices.end(), {
-			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da,  half_width), normal,
-			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -half_width), normal,
-			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da,  half_width), normal,
-			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, -half_width), normal
+            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da,  hf), normal,
+            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -hf), normal,
+            lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da,  hf), normal,
+            lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, -hf), normal
 		});
 
 		indices.insert(indices.end(), {
@@ -425,10 +424,10 @@ lamp::gl::mesh_ptr Gears::create_gear() const
 		const lamp::v3 normal_2(-cos_ta_4da, -sin_ta_4da, 0.0f);
 
 		vertices.insert(vertices.end(), {
-			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -half_width), normal_1,
-			lamp::v3(r0 * cos_ta,     r0 * sin_ta,      half_width), normal_1,
-			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -half_width), normal_2,
-			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da,  half_width), normal_2
+            lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -hf), normal_1,
+            lamp::v3(r0 * cos_ta,     r0 * sin_ta,      hf), normal_1,
+            lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -hf), normal_2,
+            lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da,  hf), normal_2
 		});
 
 		indices.insert(indices.end(), {
@@ -482,7 +481,6 @@ entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& c
 	if (speed > 0.0f)
 	{
 		body->setAngularVelocity({ 0, 0, speed });
-		// body->setLinearVelocity(btVector3(0.3f, 0.0f, 0.0f));
 	}
 	else
 	{
@@ -496,7 +494,7 @@ entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& c
 	return entity;
 }
 
-lamp::gl::mesh_ptr Gears::create_rail(const int32_t length) const
+std::shared_ptr<lamp::Mesh> Gears::create_rail(const int32_t length) const
 {
     std::vector<lamp::v3> vertices;
     std::vector<uint32_t> indices;
