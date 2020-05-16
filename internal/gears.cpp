@@ -150,16 +150,21 @@ void Gears::update(const float delta_time)
 
 	constexpr float camera_speed = 6.1f;
 
-	if (glfwGetKey(static_cast<GLFWwindow*>(_window), GLFW_KEY_LEFT) == GLFW_PRESS) {
+    auto entities = ecs.entities.entities_with_components<lamp::components::camera>();
+    auto entity   = std::find_if(entities.begin(), entities.begin(), [](entityx::Entity e) {
+        return e.component<lamp::components::camera>()->main;
+    });
 
-        //camera_position.x -= camera_speed * delta_time;
-        //camera.view(camera_position);
+    auto position = (*entity).component<lamp::components::position>();
+
+	if (glfwGetKey(static_cast<GLFWwindow*>(_window), GLFW_KEY_LEFT) == GLFW_PRESS)
+	{
+        position->x -= camera_speed * delta_time;
     }
 
-	if (glfwGetKey(static_cast<GLFWwindow*>(_window), GLFW_KEY_RIGHT) == GLFW_PRESS) {
-
-        //camera_position.x += camera_speed * delta_time;
-        //camera.view(camera_position);
+	if (glfwGetKey(static_cast<GLFWwindow*>(_window), GLFW_KEY_RIGHT) == GLFW_PRESS)
+	{
+        position->x += camera_speed * delta_time;
 	}
 }
 
