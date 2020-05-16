@@ -14,6 +14,7 @@
 #include "engine/components/position.hpp"
 #include "engine/components/camera.hpp"
 #include "engine/components/rotation.hpp"
+#include "engine/components/viewport.hpp"
 
 #include "engine/events/camera.hpp"
 #include "engine/events/light.hpp"
@@ -104,6 +105,10 @@ void Gears::init()
         position->x = 0.0f;
         position->y = 0.0f;
         position->z = 20.0f;
+
+        auto viewport = entity.assign<lamp::components::viewport>();
+        viewport->width  = 1280.0f;
+        viewport->height = 768.0f;
     }
 
     {
