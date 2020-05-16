@@ -1,22 +1,32 @@
 #include "gears.hpp"
-#include "components/selectable.hpp"
 
+#include "engine/systems/rotation.hpp"
+#include "engine/systems/camera.hpp"
 #include "engine/systems/renderer.hpp"
 #include "engine/systems/physics.hpp"
+#include "engine/systems/light.hpp"
+#include "engine/systems/editor.hpp"
 
 #include "engine/components/transform.hpp"
 #include "engine/components/renderer.hpp"
 #include "engine/components/rigidbody.hpp"
+#include "engine/components/selectable.hpp"
+#include "engine/components/position.hpp"
+#include "engine/components/camera.hpp"
+#include "engine/components/rotation.hpp"
 
-#include "common/random.hpp"
+#include "engine/events/camera.hpp"
+#include "engine/events/light.hpp"
+
+#include "engine/editor.hpp"
 
 #include "physics/utils.hpp"
+#include "common/random.hpp"
 
 #include "gl/renderer.hpp"
 #include "gl/program.hpp"
 
 #include "importer.hpp"
-#include "editor.hpp"
 #include "assets.inl"
 
 #include <glm/gtc/type_ptr.hpp>
@@ -26,12 +36,6 @@
 const btVector3 axis(0, 0, 1);
 
 lamp::gl::program_ptr model_shader;
-
-lamp::gl::buffer_ptr camera_position_buffer;
-lamp::gl::buffer_ptr camera_buffer;
-lamp::gl::buffer_ptr light_buffer;
-
-lamp::v3 camera_position;
 
 void Gears::input(const int32_t action, const int32_t key)
 {
@@ -44,22 +48,24 @@ void Gears::input(const int32_t action, const int32_t key)
 
 		    if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow)) {
 
-                auto hit = _physics.ray(_camera.to_world(_mouse));
+                /*auto hit = physics.ray(camera.to_world(_mouse));
 
                 if (hit.hasHit()) {
 
                     if (const int32_t index = hit.m_collisionObject->getUserIndex(); index != -1) {
 
-                        _ecs.entities.each<selectable>([](entityx::Entity entity, selectable& selectable) {
+                        ecs.entities.each<lamp::components::selectable>([](entityx::Entity entity,
+                                          lamp::components::selectable& selectable) {
+
                             selectable.selected = false;
                         });
 
-                        auto id     = _ecs.entities.create_id(hit.m_collisionObject->getUserIndex());
-                        auto entity = _ecs.entities.get(id);
+                        auto id     = ecs.entities.create_id(hit.m_collisionObject->getUserIndex());
+                        auto entity = ecs.entities.get(id);
 
-                        entity.component<selectable>()->selected = true;
+                        entity.component<lamp::components::selectable>()->selected = true;
                     }
-                }
+                }*/
 			}
 		} else {
 			Game::input(action, key);
@@ -71,18 +77,15 @@ void Gears::init()
 {
     glfwSetScrollCallback(static_cast<GLFWwindow*>(_window), [](GLFWwindow* ptr, const double, const double offset) noexcept {
 
-        static float value = 60.0f;
+       /* auto& camera = static_cast<Game*>(glfwGetWindowUserPointer(ptr))->camera;
 
-        value -= static_cast<float>(offset * 2.0f);
-        value  = glm::clamp(value, 1.0f, 60.0f);
+        camera.fov -= static_cast<float>(offset * 2.0f);
+        camera.fov  = glm::clamp(camera.fov, 1.0f, 60.0f);
 
-        auto& camera = static_cast<Game*>(glfwGetWindowUserPointer(ptr))->camera();
-
-        camera.fov(value);
         camera.update();
 
-        const std::array<lamp::m4, 1> uniforms = { camera.proj() };
-        camera_buffer->sub_data(std::make_pair(uniforms.data(), uniforms.size()), 1);
+        lamp::events::CameraAspect event;*/
+        //ecs.events.emit()
     });
 
 	auto model_vert = lamp::Assets::create("shaders/glsl/model.vert", GL_VERTEX_SHADER);
@@ -90,13 +93,7 @@ void Gears::init()
 
 	model_shader = lamp::Assets::create(model_vert, model_frag);
 
-	_light.position = { 0.0f, 0.0f, 10.0f };
-	_light.ambient  = 0.4f;
-	_light.diffuse  = 0.7f;
-	_light.specular = 0.65f;
-
-	_ecs.systems.add<lamp::systems::Renderer>()->init();
-	_ecs.systems.add<lamp::systems::Physics>();
+    ecs.systems.add<lamp::systems::Rotation>();
 
 	gear.inner = 0.7f;
 	gear.outer = 3.0f;
@@ -104,105 +101,77 @@ void Gears::init()
 	gear.width = 0.5f;
 	gear.teeth = 13;
 
+    {
+        auto entity = ecs.entities.create();
+        entity.assign<lamp::components::transform>();
+        auto position = entity.assign<lamp::components::position>();
+        auto camera = entity.assign<lamp::components::camera>();
+        camera->main = true;
+
+        position->x = 0.0f;
+        position->y = 0.0f;
+        position->z = 20.0f;
+    }
+
+    {
+        auto entity = ecs.entities.create();
+        entity.assign<lamp::components::position>();
+
+        auto light  = entity.assign<lamp::components::light>();
+        light->position = { 0.0f, 0.0f, 10.0f };
+        light->ambient  = 0.4f;
+        light->diffuse  = 0.7f;
+        light->specular = 0.65f;
+
+        auto rotation = entity.assign<lamp::components::rotation>();
+        rotation->speed  = 2.0f;
+        rotation->radius = 10.0f;
+    }
+
 	create_plane({ 0.8f, 0.4f, 0.4f }, { 0.0f, -4.0f,   0.0f }, { 0, 1, 0 }, { 0, 0, 1 },  0.0f);
     create_plane({ 0.6f, 0.4f, 0.2f }, { 0.0f, 16.0f, -20.0f }, { 0, 0, 1 }, { 1, 0, 0 }, 90.0f);
 
-	camera_position = { 0.0f, 0.0f, 20.0f };
-
-	_camera.view(camera_position);
-	_camera.update();
-
-	const std::array<lamp::m4, 2> u_camera = { _camera.view(), _camera.proj() };
-
-	camera_buffer = lamp::Assets::create(GL_UNIFORM_BUFFER, std::make_pair(u_camera.data(), u_camera.size()), GL_STATIC_DRAW);
-	camera_buffer->bind(0);
-
-	const std::array<lamp::components::light, 1> u_light = { _light };
-
-	light_buffer = lamp::Assets::create(GL_UNIFORM_BUFFER, std::make_pair(u_light.data(), u_light.size()), GL_STATIC_DRAW);
-	light_buffer->bind(1);
-
-	const std::array<lamp::v3, 1> u_camera_position = { camera_position };
-
-	camera_position_buffer = lamp::Assets::create(GL_UNIFORM_BUFFER, std::make_pair(u_camera_position.data(), u_camera_position.size()), GL_STATIC_DRAW);
-    camera_position_buffer->bind(4);
-
-	lamp::Editor::init(static_cast<GLFWwindow*>(_window));
+	lamp::ui::Editor::init(static_cast<GLFWwindow*>(_window));
 }
 
 void Gears::release()
 {
 	model_shader->release();
 
-	lamp::Editor::release();
+	lamp::ui::Editor::release();
 }
 
 void Gears::update(const float delta_time)
 {
-	_ecs.systems.update<lamp::systems::Physics>(delta_time);
-
-	bool upload = false;
+	ecs.systems.update<lamp::systems::Physics>(delta_time);
+	ecs.systems.update<lamp::systems::Rotation>(delta_time);
+	ecs.systems.update<lamp::systems::Camera>(delta_time);
+	ecs.systems.update<lamp::systems::Light>(delta_time);
 
 	constexpr float camera_speed = 6.1f;
 
 	if (glfwGetKey(static_cast<GLFWwindow*>(_window), GLFW_KEY_LEFT) == GLFW_PRESS) {
 
-         camera_position.x -= camera_speed * delta_time;
-        _camera.view(camera_position);
-
-        upload = true;
+        //camera_position.x -= camera_speed * delta_time;
+        //camera.view(camera_position);
     }
 
 	if (glfwGetKey(static_cast<GLFWwindow*>(_window), GLFW_KEY_RIGHT) == GLFW_PRESS) {
 
-         camera_position.x += camera_speed * delta_time;
-        _camera.view(camera_position);
-
-        upload = true;
+        //camera_position.x += camera_speed * delta_time;
+        //camera.view(camera_position);
 	}
-
-	if (upload)
-    {
-        const std::array<lamp::m4, 1> uniforms = { _camera.view() };
-        camera_buffer->sub_data(std::make_pair(uniforms.data(), uniforms.size()), 0);
-
-        const std::array<lamp::v3, 1> u_camera_position = { camera_position };
-        camera_position_buffer->data(u_camera_position);
-	}
-
-	const float value  = Game::timer.elapsed() * 2.0f;
-	const float radius = 10.0f;
-
-    _light.position.x = radius * std::cosf(value);
-	_light.position.z = radius * std::sinf(value);
-
-    const std::array<lamp::components::light, 1> uniforms = { _light };
-    light_buffer->data(uniforms);
 }
 
 void Gears::draw()
 {
 	lamp::gl::Renderer::clear();
 
-	_ecs.systems.update<lamp::systems::Renderer>(0);
+	ecs.systems.update<lamp::systems::Renderer>(0);
 
-	lamp::Editor::begin();
+	lamp::ui::Editor::begin();
 
-	if (_show_editor) {
-
-		lamp::Editor::draw(_light);
-
-		const std::array<lamp::components::light, 1> uniforms = { _light };
-		light_buffer->data(uniforms);
-
-		_ecs.entities.each<selectable>([](entityx::Entity entity, selectable& selectable) {
-
-			if (selectable.selected)
-			{
-				lamp::Editor::draw(entity.component<lamp::components::renderer>()->material);
-			}
-		});
-	}
+	ecs.systems.update<lamp::systems::Editor>(0);
 
 	if (_show_menu) {
 
@@ -227,13 +196,13 @@ void Gears::draw()
 
             auto last_one = create(new_position, lamp::Random::color(), true, static_cast<float>(count + 0.5f));
 
-            for (uint32_t i = 1; i < count; i++) {
+            for (int32_t i = 1; i < count; i++) {
 
                 new_position.x += offset;
 
                 auto new_one = create(new_position, lamp::Random::color(), i % 2 == 0);
 
-                _physics.add_constraint(new btGearConstraint(
+                physics.add_constraint(new btGearConstraint(
                 *last_one.component<lamp::components::rigidbody>()->body,
                  *new_one.component<lamp::components::rigidbody>()->body, axis, axis), true);
 
@@ -243,35 +212,37 @@ void Gears::draw()
 
 		ImGui::End();
 
-        _ecs.entities.each<selectable>([](entityx::Entity entity, selectable& selectable) {
-
-            if (entity.has_component<lamp::components::rigidbody>() && selectable.selected)
-            {
-                ImGui::Begin("Gear", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
-
-                if (ImGui::Button("Remove"))
-                {
-                    auto body = entity.component<lamp::components::rigidbody>()->body;
-
-                    body->setLinearFactor({ 1, 1, 1 });
-                    body->setAngularFactor({ 1, 1, 1 });
-
-                    body->applyCentralImpulse({ 0, 0, -25.0f });
-
-                    for (int32_t i = 0; i < body->getNumConstraintRefs(); i++)
-                    {
-                        auto constraint = body->getConstraintRef(i);
-
-                        body->removeConstraintRef(constraint);
-                    }
-                }
-
-                ImGui::End();
-            }
+        auto entities = ecs.entities.entities_with_components<lamp::components::selectable>();
+        auto entity   = std::find_if(entities.begin(), entities.begin(), [](entityx::Entity e) {
+            return e.component<lamp::components::selectable>()->selected;
         });
+
+        if ((*entity).has_component<lamp::components::rigidbody>())
+        {
+            ImGui::Begin("Gear", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+
+            if (ImGui::Button("Remove"))
+            {
+                auto body = (*entity).component<lamp::components::rigidbody>()->body;
+
+                body->setLinearFactor({ 1, 1, 1 });
+                body->setAngularFactor({ 1, 1, 1 });
+
+                body->applyCentralImpulse({ 0, 0, -25.0f });
+
+                for (int32_t i = 0; i < body->getNumConstraintRefs(); i++)
+                {
+                    auto constraint = body->getConstraintRef(i);
+
+                    body->removeConstraintRef(constraint);
+                }
+            }
+
+            ImGui::End();
+        }
 	}
 
-	lamp::Editor::end();
+	lamp::ui::Editor::end();
 }
 
 std::shared_ptr<lamp::Mesh> Gears::create_gear() const
@@ -445,11 +416,11 @@ std::shared_ptr<lamp::Mesh> Gears::create_gear() const
 
 entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& color, const bool middle, const float speed)
 {
-	auto entity   = _ecs.entities.create();
+	auto entity   = ecs.entities.create();
 	auto renderer = entity.assign<lamp::components::renderer>();
 
 	entity.assign<lamp::components::transform>();
-    entity.assign<selectable>();
+    entity.assign<lamp::components::selectable>();
 
 	renderer->shader = model_shader;
     renderer->mesh   = create_gear();
@@ -489,7 +460,7 @@ entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& c
 
 	entity.assign<lamp::components::rigidbody>()->body = body;
 
-	_physics.add_rigidbody(body);
+	physics.add_rigidbody(body);
 
 	return entity;
 }
@@ -508,7 +479,7 @@ std::shared_ptr<lamp::Mesh> Gears::create_rail(const int32_t length) const
 
 void Gears::create_plane(const lamp::math::rgb& color, const lamp::v3& position, const lamp::v3& normal, const lamp::v3& axes, const float angle)
 {
-    auto plane    = _ecs.entities.create();
+    auto plane    = ecs.entities.create();
     auto renderer = plane.assign<lamp::components::renderer>();
 
     renderer->shader   = model_shader;
@@ -519,7 +490,7 @@ void Gears::create_plane(const lamp::math::rgb& color, const lamp::v3& position,
 
     auto world = glm::translate(glm::identity<lamp::m4>(), position);
     plane.assign<lamp::components::transform>()->world = glm::rotate(world, glm::radians(angle), axes);
-    plane.assign<selectable>();
+    plane.assign<lamp::components::selectable>();
 
     btRigidBody::btRigidBodyConstructionInfo info(0.0f,
                                                   new btDefaultMotionState(lamp::utils::from(position, glm::identity<lamp::quat>())),
@@ -527,7 +498,7 @@ void Gears::create_plane(const lamp::math::rgb& color, const lamp::v3& position,
     auto body = new btRigidBody(info);
     body->setUserIndex(static_cast<int32_t>(plane.id().id()));
 
-    _physics.add_rigidbody(body);
+    physics.add_rigidbody(body);
 }
 
 int32_t main()
