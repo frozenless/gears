@@ -19,6 +19,7 @@
 #include "engine/events/light.hpp"
 
 #include "engine/editor.hpp"
+#include "engine/camera.hpp"
 
 #include "physics/utils.hpp"
 #include "common/random.hpp"
@@ -39,7 +40,7 @@ lamp::gl::program_ptr model_shader;
 
 void Gears::input(const int32_t action, const int32_t key)
 {
-	if (action == GLFW_PRESS) {
+	if (action  == GLFW_PRESS) {
 		if (key == GLFW_KEY_TAB) {
 
             _show_menu = !_show_menu;
@@ -48,7 +49,12 @@ void Gears::input(const int32_t action, const int32_t key)
 
 		    if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow)) {
 
-                /*auto hit = physics.ray(camera.to_world(_mouse));
+                auto entities = ecs.entities.entities_with_components<lamp::components::camera>();
+                auto camera   = std::find_if(entities.begin(), entities.begin(), [](entityx::Entity e) {
+                    return e.component<lamp::components::camera>()->main;
+                });
+
+                auto hit = physics.ray(lamp::Camera::to_world((*camera), _mouse));
 
                 if (hit.hasHit()) {
 
@@ -65,7 +71,7 @@ void Gears::input(const int32_t action, const int32_t key)
 
                         entity.component<lamp::components::selectable>()->selected = true;
                     }
-                }*/
+                }
 			}
 		} else {
 			Game::input(action, key);
@@ -75,19 +81,6 @@ void Gears::input(const int32_t action, const int32_t key)
 
 void Gears::init()
 {
-    glfwSetScrollCallback(static_cast<GLFWwindow*>(_window), [](GLFWwindow* ptr, const double, const double offset) noexcept {
-
-       /* auto& camera = static_cast<Game*>(glfwGetWindowUserPointer(ptr))->camera;
-
-        camera.fov -= static_cast<float>(offset * 2.0f);
-        camera.fov  = glm::clamp(camera.fov, 1.0f, 60.0f);
-
-        camera.update();
-
-        lamp::events::CameraAspect event;*/
-        //ecs.events.emit()
-    });
-
 	auto model_vert = lamp::Assets::create("shaders/glsl/model.vert", GL_VERTEX_SHADER);
 	auto model_frag = lamp::Assets::create("shaders/glsl/model.frag", GL_FRAGMENT_SHADER);
 
