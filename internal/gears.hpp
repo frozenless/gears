@@ -3,7 +3,9 @@
 
 #include "engine/mesh.hpp"
 
-class Gears : public lamp::Game
+using namespace lamp;
+
+class Gears : public Game
 {
 protected:
 	void init()    final;
@@ -14,13 +16,13 @@ protected:
 
 	void input(int32_t action, int32_t key) final;
 
-    entityx::Entity create(const lamp::v3& position, const lamp::math::rgb& color, bool middle, float speed = 0.0f);
+    entityx::Entity create(const v3& position, const math::rgb& color, bool middle, float speed = 0.0f);
 
 private:
-    void create_plane(const lamp::math::rgb& color, const lamp::v3& position, const lamp::v3& normal, const lamp::v3& axes, float angle);
+    void create_plane(const math::rgb& color, const v3& position, const v3& normal, const v3& axes, float angle);
 
-    [[nodiscard]] std::shared_ptr<lamp::Mesh> create_gear()               const;
-    [[nodiscard]] std::shared_ptr<lamp::Mesh> create_rail(int32_t length) const;
+    [[nodiscard]] std::shared_ptr<Mesh> create_gear()               const;
+    [[nodiscard]] std::shared_ptr<Mesh> create_rail(int32_t length) const;
 
 	bool _show_menu = false;
 

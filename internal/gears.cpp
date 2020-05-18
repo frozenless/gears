@@ -37,7 +37,7 @@
 
 const btVector3 axis(0, 0, 1);
 
-lamp::gl::program_ptr model_shader;
+gl::program_ptr model_shader;
 
 void Gears::input(const int32_t action, const int32_t key)
 {
@@ -50,19 +50,19 @@ void Gears::input(const int32_t action, const int32_t key)
 
 		    if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow)) {
 
-                auto entities = ecs.entities.entities_with_components<lamp::components::camera>();
+                auto entities = ecs.entities.entities_with_components<components::camera>();
                 auto camera   = std::find_if(entities.begin(), entities.end(), [](entityx::Entity e) {
-                    return e.component<lamp::components::camera>()->main;
+                    return e.component<components::camera>()->main;
                 });
 
-                auto hit = physics.ray(lamp::Camera::to_world((*camera), _mouse));
+                auto hit = physics.ray(Camera::to_world((*camera), _mouse));
 
                 if (hit.hasHit()) {
 
                     if (const int32_t index = hit.m_collisionObject->getUserIndex(); index != -1) {
 
-                        ecs.entities.each<lamp::components::selectable>([](entityx::Entity entity,
-                                          lamp::components::selectable& selectable) {
+                        ecs.entities.each<components::selectable>([](entityx::Entity entity,
+                                          components::selectable& selectable) {
 
                             selectable.selected = false;
                         });
@@ -70,7 +70,7 @@ void Gears::input(const int32_t action, const int32_t key)
                         auto id     = ecs.entities.create_id(hit.m_collisionObject->getUserIndex());
                         auto entity = ecs.entities.get(id);
 
-                        entity.component<lamp::components::selectable>()->selected = true;
+                        entity.component<components::selectable>()->selected = true;
                     }
                 }
 			}
@@ -82,12 +82,12 @@ void Gears::input(const int32_t action, const int32_t key)
 
 void Gears::init()
 {
-	auto model_vert = lamp::Assets::create("shaders/glsl/model.vert", GL_VERTEX_SHADER);
-	auto model_frag = lamp::Assets::create("shaders/glsl/model.frag", GL_FRAGMENT_SHADER);
+	auto model_vert = Assets::create("shaders/glsl/model.vert", GL_VERTEX_SHADER);
+	auto model_frag = Assets::create("shaders/glsl/model.frag", GL_FRAGMENT_SHADER);
 
-	model_shader = lamp::Assets::create(model_vert, model_frag);
+	model_shader = Assets::create(model_vert, model_frag);
 
-    ecs.systems.add<lamp::systems::Rotation>();
+    ecs.systems.add<systems::Rotation>();
 
 	gear.inner = 0.7f;
 	gear.outer = 3.0f;
@@ -97,32 +97,32 @@ void Gears::init()
 
     {
         auto entity = ecs.entities.create();
-        entity.assign<lamp::components::transform>();
-        auto position = entity.assign<lamp::components::position>();
-        auto camera = entity.assign<lamp::components::camera>();
-        camera->main = true;
+        entity.assign<components::transform>();
+        auto position = entity.assign<components::position>();
+        auto camera   = entity.assign<components::camera>();
+        camera->main  = true;
 
         position->x = 0.0f;
         position->y = 0.0f;
         position->z = 20.0f;
 
-        auto viewport = entity.assign<lamp::components::viewport>();
+        auto viewport = entity.assign<components::viewport>();
         viewport->width  = 1280.0f;
         viewport->height = 768.0f;
     }
 
     {
         auto entity = ecs.entities.create();
-        entity.assign<lamp::components::position>();
-        entity.assign<lamp::components::selectable>();
+        entity.assign<components::position>();
+        entity.assign<components::selectable>();
 
-        auto light = entity.assign<lamp::components::light>();
+        auto light = entity.assign<components::light>();
         light->position = { 0.0f, 0.0f, 10.0f };
         light->ambient  = 0.4f;
         light->diffuse  = 0.7f;
         light->specular = 0.65f;
 
-        auto rotation = entity.assign<lamp::components::rotation>();
+        auto rotation = entity.assign<components::rotation>();
         rotation->speed  = 2.0f;
         rotation->radius = 10.0f;
 
@@ -132,8 +132,8 @@ void Gears::init()
         auto body = new btRigidBody(info);
         body->setUserIndex(static_cast<int32_t>(entity.id().id()));
 
-        entity.assign<lamp::components::rigidbody>()->body = body;
-        entity.assign<lamp::components::transform>();
+        entity.assign<components::rigidbody>()->body = body;
+        entity.assign<components::transform>();
 
         physics.add_rigidbody(body);
     }
@@ -141,31 +141,31 @@ void Gears::init()
 	create_plane({ 0.8f, 0.4f, 0.4f }, { 0.0f, -4.0f,   0.0f }, { 0, 1, 0 }, { 0, 0, 1 },  0.0f);
     create_plane({ 0.6f, 0.4f, 0.2f }, { 0.0f, 16.0f, -20.0f }, { 0, 0, 1 }, { 1, 0, 0 }, 90.0f);
 
-	lamp::ui::Editor::init(static_cast<GLFWwindow*>(_window));
+	ui::Editor::init(static_cast<GLFWwindow*>(_window));
 }
 
 void Gears::release()
 {
 	model_shader->release();
 
-	lamp::ui::Editor::release();
+	ui::Editor::release();
 }
 
 void Gears::update(const float delta_time)
 {
-	ecs.systems.update<lamp::systems::Physics>(delta_time);
-	ecs.systems.update<lamp::systems::Rotation>(delta_time);
-	ecs.systems.update<lamp::systems::Camera>(delta_time);
-	ecs.systems.update<lamp::systems::Light>(delta_time);
+	ecs.systems.update<systems::Physics>(delta_time);
+	ecs.systems.update<systems::Rotation>(delta_time);
+	ecs.systems.update<systems::Camera>(delta_time);
+	ecs.systems.update<systems::Light>(delta_time);
 
 	constexpr float camera_speed = 6.1f;
 
-    auto entities = ecs.entities.entities_with_components<lamp::components::camera>();
+    auto entities = ecs.entities.entities_with_components<components::camera>();
     auto entity   = std::find_if(entities.begin(), entities.begin(), [](entityx::Entity e) {
-        return e.component<lamp::components::camera>()->main;
+        return e.component<components::camera>()->main;
     });
 
-    auto position = (*entity).component<lamp::components::position>();
+    auto position = (*entity).component<components::position>();
 
 	if (glfwGetKey(static_cast<GLFWwindow*>(_window), GLFW_KEY_LEFT) == GLFW_PRESS)
 	{
@@ -180,18 +180,18 @@ void Gears::update(const float delta_time)
 
 void Gears::draw()
 {
-	lamp::gl::Renderer::clear();
+	gl::Renderer::clear();
 
-	ecs.systems.update<lamp::systems::Renderer>(0);
+	ecs.systems.update<systems::Renderer>(0);
 
-	lamp::ui::Editor::begin();
+	ui::Editor::begin();
 
-	ecs.systems.update<lamp::systems::Editor>(0);
+	ecs.systems.update<systems::Editor>(0);
 
 	if (_show_menu) {
 
 		static int32_t count = 3;
-		static auto position = glm::zero<lamp::v3>();
+		static auto position = glm::zero<v3>();
 
 		ImGui::Begin("Generator", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 
@@ -206,20 +206,20 @@ void Gears::draw()
         {
             const float offset = gear.outer * 2.0f;
 
-            lamp::v3 new_position = position;
+            v3 new_position = position;
             new_position.x -= (count * offset) / 2.0f - gear.outer;
 
-            auto last_one = create(new_position, lamp::Random::color(), true, static_cast<float>(count + 0.5f));
+            auto last_one = create(new_position, Random::color(), true, static_cast<float>(count + 0.5f));
 
             for (int32_t i = 1; i < count; i++) {
 
                 new_position.x += offset;
 
-                auto new_one = create(new_position, lamp::Random::color(), i % 2 == 0);
+                auto new_one = create(new_position, Random::color(), i % 2 == 0);
 
                 physics.add_constraint(new btGearConstraint(
-                *last_one.component<lamp::components::rigidbody>()->body,
-                 *new_one.component<lamp::components::rigidbody>()->body, axis, axis), true);
+                *last_one.component<components::rigidbody>()->body,
+                 *new_one.component<components::rigidbody>()->body, axis, axis), true);
 
                 last_one = new_one;
             }
@@ -227,23 +227,23 @@ void Gears::draw()
 
 		ImGui::End();
 
-        auto entities = ecs.entities.entities_with_components<lamp::components::selectable>();
+        auto entities = ecs.entities.entities_with_components<components::selectable>();
         auto entity   = std::find_if(entities.begin(), entities.end(), [](entityx::Entity e) {
 
-            auto   selectable = e.component<lamp::components::selectable>();
+            auto   selectable = e.component<components::selectable>();
             return selectable->selected && !selectable->disabled;
         });
 
         if (entity != entities.end())
         {
-            if (auto selected = (*entity); selected.has_component<lamp::components::rigidbody>())
+            if (auto selected = (*entity); selected.has_component<components::rigidbody>())
             {
                 ImGui::Begin("Gear", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 
                 if (ImGui::Button("Remove")) {
 
-                                selected.component<lamp::components::selectable>()->disabled = true;
-                    auto body = selected.component<lamp::components::rigidbody>()->body;
+                                selected.component<components::selectable>()->disabled = true;
+                    auto body = selected.component<components::rigidbody>()->body;
 
                     body->setLinearFactor({1, 1, 1});
                     body->setAngularFactor({1, 1, 1});
@@ -263,14 +263,14 @@ void Gears::draw()
         }
 	}
 
-	lamp::ui::Editor::end();
+	ui::Editor::end();
 }
 
-std::shared_ptr<lamp::Mesh> Gears::create_gear() const
+std::shared_ptr<Mesh> Gears::create_gear() const
 {
 	uint32_t index = 0;
 
-	std::vector<lamp::v3> vertices;
+	std::vector<v3> vertices;
 	std::vector<uint32_t> indices;
 
 	vertices.reserve(static_cast<size_t>(80) * gear.teeth);
@@ -313,16 +313,16 @@ std::shared_ptr<lamp::Mesh> Gears::create_gear() const
 		v1 /= len;
 
 		// front face
-		lamp::v3 normal(0.0f, 0.0f, 1.0f);
+		v3 normal(0.0f, 0.0f, 1.0f);
         vertices.insert(vertices.end(), {
-            lamp::v3(r0 * cos_ta,     r0 * sin_ta,     hf), normal, // 0
-            lamp::v3(r1 * cos_ta,     r1 * sin_ta,     hf), normal, // 1
-            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, hf), normal, // 2
-            lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, hf), normal, // 3
-            lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, hf), normal, // 4
+            v3(r0 * cos_ta,     r0 * sin_ta,     hf), normal, // 0
+            v3(r1 * cos_ta,     r1 * sin_ta,     hf), normal, // 1
+            v3(r1 * cos_ta_3da, r1 * sin_ta_3da, hf), normal, // 2
+            v3(r0 * cos_ta_4da, r0 * sin_ta_4da, hf), normal, // 3
+            v3(r1 * cos_ta_4da, r1 * sin_ta_4da, hf), normal, // 4
 
-            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, hf), normal, // 5
-            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, hf), normal  // 6
+            v3(r2 * cos_ta_1da, r2 * sin_ta_1da, hf), normal, // 5
+            v3(r2 * cos_ta_2da, r2 * sin_ta_2da, hf), normal  // 6
         });
 
         indices.insert(indices.end(), {
@@ -338,14 +338,14 @@ std::shared_ptr<lamp::Mesh> Gears::create_gear() const
 		// back face
         normal.z = -1.0f;
 		vertices.insert(vertices.end(), {
-            lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -hf), normal, // 0
-			lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -hf), normal, // 1
-			lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -hf), normal, // 2
-			lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, -hf), normal, // 3
-			lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -hf), normal, // 4
+            v3(r1 * cos_ta,     r1 * sin_ta,     -hf), normal, // 0
+			v3(r0 * cos_ta,     r0 * sin_ta,     -hf), normal, // 1
+			v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -hf), normal, // 2
+			v3(r1 * cos_ta_4da, r1 * sin_ta_4da, -hf), normal, // 3
+			v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -hf), normal, // 4
 
-            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -hf), normal, // 5
-            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -hf), normal  // 6
+            v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -hf), normal, // 5
+            v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -hf), normal  // 6
 		});
 
 		indices.insert(indices.end(), {
@@ -359,12 +359,12 @@ std::shared_ptr<lamp::Mesh> Gears::create_gear() const
 		}); index += 7;
 
 		// draw outward faces of teeth
-		normal = lamp::v3(v1, -u1, 0.0f);
+		normal = v3(v1, -u1, 0.0f);
 		vertices.insert(vertices.end(), {
-            lamp::v3(r1 * cos_ta,     r1 * sin_ta,      hf), normal,
-            lamp::v3(r1 * cos_ta,     r1 * sin_ta,     -hf), normal,
-            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da,  hf), normal,
-            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -hf), normal
+            v3(r1 * cos_ta,     r1 * sin_ta,      hf), normal,
+            v3(r1 * cos_ta,     r1 * sin_ta,     -hf), normal,
+            v3(r2 * cos_ta_1da, r2 * sin_ta_1da,  hf), normal,
+            v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -hf), normal
 		});
 
 		indices.insert(indices.end(), {
@@ -372,12 +372,12 @@ std::shared_ptr<lamp::Mesh> Gears::create_gear() const
 			index + 1, index + 3, index + 2
 		}); index += 4;
 
-		normal = lamp::v3(cos_ta, sin_ta, 0.0f);
+		normal = v3(cos_ta, sin_ta, 0.0f);
 		vertices.insert(vertices.end(), {
-            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da,  hf), normal,
-            lamp::v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -hf), normal,
-            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da,  hf), normal,
-            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -hf), normal
+            v3(r2 * cos_ta_1da, r2 * sin_ta_1da,  hf), normal,
+            v3(r2 * cos_ta_1da, r2 * sin_ta_1da, -hf), normal,
+            v3(r2 * cos_ta_2da, r2 * sin_ta_2da,  hf), normal,
+            v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -hf), normal
 		});
 
 		indices.insert(indices.end(), {
@@ -385,12 +385,12 @@ std::shared_ptr<lamp::Mesh> Gears::create_gear() const
 			index + 1, index + 3, index + 2
 		}); index += 4;
 
-		normal = lamp::v3(v2, -u2, 0.0f);
+		normal = v3(v2, -u2, 0.0f);
 		vertices.insert(vertices.end(), {
-            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da,  hf), normal,
-            lamp::v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -hf), normal,
-            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da,  hf), normal,
-            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -hf), normal
+            v3(r2 * cos_ta_2da, r2 * sin_ta_2da,  hf), normal,
+            v3(r2 * cos_ta_2da, r2 * sin_ta_2da, -hf), normal,
+            v3(r1 * cos_ta_3da, r1 * sin_ta_3da,  hf), normal,
+            v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -hf), normal
 		});
 
 		indices.insert(indices.end(), {
@@ -398,12 +398,12 @@ std::shared_ptr<lamp::Mesh> Gears::create_gear() const
 			index + 1, index + 3, index + 2
 		}); index += 4;
 
-		normal = lamp::v3(cos_ta, sin_ta, 0.0f);
+		normal = v3(cos_ta, sin_ta, 0.0f);
 		vertices.insert(vertices.end(), {
-            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da,  hf), normal,
-            lamp::v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -hf), normal,
-            lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da,  hf), normal,
-            lamp::v3(r1 * cos_ta_4da, r1 * sin_ta_4da, -hf), normal
+            v3(r1 * cos_ta_3da, r1 * sin_ta_3da,  hf), normal,
+            v3(r1 * cos_ta_3da, r1 * sin_ta_3da, -hf), normal,
+            v3(r1 * cos_ta_4da, r1 * sin_ta_4da,  hf), normal,
+            v3(r1 * cos_ta_4da, r1 * sin_ta_4da, -hf), normal
 		});
 
 		indices.insert(indices.end(), {
@@ -412,14 +412,14 @@ std::shared_ptr<lamp::Mesh> Gears::create_gear() const
 		}); index += 4;
 
         // draw inside radius cylinder
-		const lamp::v3 normal_1(-cos_ta,     -sin_ta,     0.0f);
-		const lamp::v3 normal_2(-cos_ta_4da, -sin_ta_4da, 0.0f);
+		const v3 normal_1(-cos_ta,     -sin_ta,     0.0f);
+		const v3 normal_2(-cos_ta_4da, -sin_ta_4da, 0.0f);
 
 		vertices.insert(vertices.end(), {
-            lamp::v3(r0 * cos_ta,     r0 * sin_ta,     -hf), normal_1,
-            lamp::v3(r0 * cos_ta,     r0 * sin_ta,      hf), normal_1,
-            lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -hf), normal_2,
-            lamp::v3(r0 * cos_ta_4da, r0 * sin_ta_4da,  hf), normal_2
+            v3(r0 * cos_ta,     r0 * sin_ta,     -hf), normal_1,
+            v3(r0 * cos_ta,     r0 * sin_ta,      hf), normal_1,
+            v3(r0 * cos_ta_4da, r0 * sin_ta_4da, -hf), normal_2,
+            v3(r0 * cos_ta_4da, r0 * sin_ta_4da,  hf), normal_2
 		});
 
 		indices.insert(indices.end(), {
@@ -428,25 +428,25 @@ std::shared_ptr<lamp::Mesh> Gears::create_gear() const
 		}); index += 4;
 	}
 
-	lamp::gl::Layout layout;
+	gl::Layout layout;
 	layout.add<float>(3);
 	layout.add<float>(3);
 
-	return lamp::Assets::create(vertices, indices, layout, GL_TRIANGLES, GL_STATIC_DRAW);
+	return Assets::create(vertices, indices, layout, GL_TRIANGLES, GL_STATIC_DRAW);
 }
 
-entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& color, const bool middle, const float speed)
+entityx::Entity Gears::create(const v3& position, const math::rgb& color, const bool middle, const float speed)
 {
 	auto entity   = ecs.entities.create();
-	auto renderer = entity.assign<lamp::components::renderer>();
+	auto renderer = entity.assign<components::renderer>();
 
-	entity.assign<lamp::components::transform>();
-    entity.assign<lamp::components::selectable>();
+	entity.assign<components::transform>();
+    entity.assign<components::selectable>();
 
 	renderer->shader = model_shader;
     renderer->mesh   = create_gear();
 
-	renderer->material = std::make_shared<lamp::Material>();
+	renderer->material = std::make_shared<Material>();
 	renderer->material->color     = color;
     renderer->material->shininess = 128.0f;
 
@@ -479,42 +479,42 @@ entityx::Entity Gears::create(const lamp::v3& position, const lamp::math::rgb& c
 		body->setAngularFactor({ 0, 0, 1 });
 	}
 
-	entity.assign<lamp::components::rigidbody>()->body = body;
+	entity.assign<components::rigidbody>()->body = body;
 
 	physics.add_rigidbody(body);
 
 	return entity;
 }
 
-std::shared_ptr<lamp::Mesh> Gears::create_rail(const int32_t length) const
+std::shared_ptr<Mesh> Gears::create_rail(const int32_t length) const
 {
-    std::vector<lamp::v3> vertices;
+    std::vector<v3> vertices;
     std::vector<uint32_t> indices;
 
-    lamp::gl::Layout layout;
+    gl::Layout layout;
     layout.add<float>(3);
     layout.add<float>(3);
 
-    return lamp::Assets::create(vertices, indices, layout, GL_TRIANGLES, GL_STATIC_DRAW);
+    return Assets::create(vertices, indices, layout, GL_TRIANGLES, GL_STATIC_DRAW);
 }
 
-void Gears::create_plane(const lamp::math::rgb& color, const lamp::v3& position, const lamp::v3& normal, const lamp::v3& axes, const float angle)
+void Gears::create_plane(const math::rgb& color, const v3& position, const v3& normal, const v3& axes, const float angle)
 {
     auto plane    = ecs.entities.create();
-    auto renderer = plane.assign<lamp::components::renderer>();
+    auto renderer = plane.assign<components::renderer>();
 
     renderer->shader   = model_shader;
-    renderer->mesh     = lamp::Importer::import("models/plane.obj");
-    renderer->material = std::make_shared<lamp::Material>();
+    renderer->mesh     = Importer::import("models/plane.obj");
+    renderer->material = std::make_shared<Material>();
     renderer->material->color     = color;
     renderer->material->shininess = 128.0f;
 
-    auto world = glm::translate(glm::identity<lamp::m4>(), position);
-    plane.assign<lamp::components::transform>()->world = glm::rotate(world, glm::radians(angle), axes);
-    plane.assign<lamp::components::selectable>();
+    auto world = glm::translate(glm::identity<m4>(), position);
+    plane.assign<components::transform>()->world = glm::rotate(world, glm::radians(angle), axes);
+    plane.assign<components::selectable>();
 
     btRigidBody::btRigidBodyConstructionInfo info(0.0f,
-                                                  new btDefaultMotionState(lamp::utils::from(position, glm::identity<lamp::quat>())),
+                                                  new btDefaultMotionState(utils::from(position, glm::identity<quat>())),
                                                   new btStaticPlaneShape({ normal.x, normal.y, normal.z }, 0));
     auto body = new btRigidBody(info);
     body->setUserIndex(static_cast<int32_t>(plane.id().id()));
