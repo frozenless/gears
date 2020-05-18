@@ -2,6 +2,7 @@
 #include "gear.hpp"
 
 #include "engine/mesh.hpp"
+#include "math/rgb.hpp"
 
 using namespace lamp;
 
@@ -21,8 +22,7 @@ protected:
 private:
     void create_plane(const math::rgb& color, const v3& position, const v3& normal, const v3& axes, float angle);
 
-    [[nodiscard]] std::shared_ptr<Mesh> create_gear()               const;
-    [[nodiscard]] std::shared_ptr<Mesh> create_rail(int32_t length) const;
+    [[nodiscard]] std::shared_ptr<Mesh> create_gear() const;
 
 	bool _show_menu = false;
 

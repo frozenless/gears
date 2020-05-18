@@ -16,11 +16,7 @@
 #include "engine/components/rotation.hpp"
 #include "engine/components/viewport.hpp"
 
-#include "engine/events/camera.hpp"
-#include "engine/events/light.hpp"
-
 #include "engine/editor.hpp"
-#include "engine/camera.hpp"
 
 #include "physics/utils.hpp"
 #include "common/random.hpp"
@@ -55,7 +51,7 @@ void Gears::input(const int32_t action, const int32_t key)
                     return e.component<components::camera>()->main;
                 });
 
-                auto hit = physics.ray(Camera::to_world((*camera), _mouse));
+                auto hit = physics.ray(physics::to_world((*camera), _mouse));
 
                 if (hit.hasHit()) {
 
@@ -266,7 +262,7 @@ std::shared_ptr<Mesh> Gears::create_gear() const
 	std::vector<v3> vertices;
 	std::vector<uint32_t> indices;
 
-	vertices.reserve(static_cast<size_t>(80) * gear.teeth);
+	vertices.reserve(static_cast<size_t>(68) * gear.teeth);
 	indices.reserve(static_cast<size_t>(66)  * gear.teeth);
 
 	const float half_depth = gear.depth * 0.5f;
@@ -433,15 +429,15 @@ entityx::Entity Gears::create(const v3& position, const math::rgb& color, const 
 	auto entity   = ecs.entities.create();
 	auto renderer = entity.assign<components::renderer>();
 
-	entity.assign<components::transform>();
-    entity.assign<components::selectable>();
-
 	renderer->shader = model_shader;
     renderer->mesh   = create_gear();
 
 	renderer->material = std::make_shared<Material>();
 	renderer->material->color     = color;
     renderer->material->shininess = 128.0f;
+
+    entity.assign<components::transform>();
+    entity.assign<components::selectable>();
 
 	btVector3 inertia;
 	constexpr float mass = 6.28f;
@@ -473,18 +469,6 @@ entityx::Entity Gears::create(const v3& position, const math::rgb& color, const 
 	return entity;
 }
 
-std::shared_ptr<Mesh> Gears::create_rail(const int32_t length) const
-{
-    std::vector<v3>       vertices;
-    std::vector<uint32_t> indices;
-
-    gl::Layout layout;
-    layout.add<float>(3);
-    layout.add<float>(3);
-
-    return Assets::create(vertices, indices, layout, GL_TRIANGLES, GL_STATIC_DRAW);
-}
-
 void Gears::create_plane(const math::rgb& color, const v3& position, const v3& normal, const v3& axes, const float angle)
 {
     auto plane    = ecs.entities.create();
@@ -501,7 +485,7 @@ void Gears::create_plane(const math::rgb& color, const v3& position, const v3& n
     plane.assign<components::selectable>();
 
     btRigidBody::btRigidBodyConstructionInfo info(0.0f,
-                                                  new btDefaultMotionState(utils::from(position, glm::identity<quat>())),
+                                                  new btDefaultMotionState(physics::from(position, glm::identity<quat>())),
                                                   new btStaticPlaneShape({ normal.x, normal.y, normal.z }, 0));
     auto body = new btRigidBody(info);
     body->setUserIndex(static_cast<int32_t>(plane.id().id()));
