@@ -35,9 +35,9 @@
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 
-const btVector3 axis(0, 0, 1);
-
 gl::program_ptr model_shader;
+
+const btVector3 axis(0, 0, 1);
 
 void Gears::input(const int32_t action, const int32_t key)
 {
@@ -67,7 +67,7 @@ void Gears::input(const int32_t action, const int32_t key)
                             selectable.selected = false;
                         });
 
-                        auto id = ecs.entities.create_id(hit.m_collisionObject->getUserIndex());
+                        auto id = ecs.entities.create_id(index);
                         auto e  = ecs.entities.get(id);
 
                         e.component<components::selectable>()->selected = true;
@@ -128,7 +128,7 @@ void Gears::init()
         entity.assign<components::position>();
         entity.assign<components::selectable>();
 
-        physics.add_rigidbody(body);
+        physics.add(body);
     }
 
 	create_plane({ 0.8f, 0.4f, 0.4f }, { 0.0f, -4.0f,   0.0f }, { 0, 1, 0 }, { 0, 0, 1 },  0.0f);
@@ -210,7 +210,7 @@ void Gears::draw()
 
                 auto new_one = create(new_position, Random::color(), i % 2 == 0);
 
-                physics.add_constraint(new btGearConstraint(
+                physics.add(new btGearConstraint(
                 *last_one.component<components::rigidbody>()->body,
                  *new_one.component<components::rigidbody>()->body, axis, axis), true);
 
@@ -282,17 +282,17 @@ std::shared_ptr<Mesh> Gears::create_gear() const
 
 		const float ta = static_cast<float>(i) * 2.0f * glm::pi<float>() / static_cast<float>(gear.teeth);
 
-		const float cos_ta = cos(ta);
-		const float cos_ta_1da = cos(ta + da);
-		const float cos_ta_2da = cos(ta + 2.0f * da);
-		const float cos_ta_3da = cos(ta + 3.0f * da);
-		const float cos_ta_4da = cos(ta + 4.0f * da);
+		const float cos_ta     = std::cosf(ta);
+		const float cos_ta_1da = std::cosf(ta + da);
+		const float cos_ta_2da = std::cosf(ta + 2.0f * da);
+		const float cos_ta_3da = std::cosf(ta + 3.0f * da);
+		const float cos_ta_4da = std::cosf(ta + 4.0f * da);
 
-		const float sin_ta = sin(ta);
-		const float sin_ta_1da = sin(ta + da);
-		const float sin_ta_2da = sin(ta + 2.0f * da);
-		const float sin_ta_3da = sin(ta + 3.0f * da);
-		const float sin_ta_4da = sin(ta + 4.0f * da);
+		const float sin_ta     = std::sinf(ta);
+		const float sin_ta_1da = std::sinf(ta + da);
+		const float sin_ta_2da = std::sinf(ta + 2.0f * da);
+		const float sin_ta_3da = std::sinf(ta + 3.0f * da);
+		const float sin_ta_4da = std::sinf(ta + 4.0f * da);
 
 		const float u2 = r1 * cos_ta_3da - r2 * cos_ta_2da;
 		const float v2 = r1 * sin_ta_3da - r2 * sin_ta_2da;
@@ -300,7 +300,7 @@ std::shared_ptr<Mesh> Gears::create_gear() const
 		float u1 = r2 * cos_ta_1da - r1 * cos_ta;
 		float v1 = r2 * sin_ta_1da - r1 * sin_ta;
 
-		const float len = std::sqrt(u1 * u1 + v1 * v1);
+		const float len = std::sqrtf(u1 * u1 + v1 * v1);
 
 		u1 /= len;
 		v1 /= len;
@@ -468,7 +468,7 @@ entityx::Entity Gears::create(const v3& position, const math::rgb& color, const 
 
 	entity.assign<components::rigidbody>()->body = body;
 
-	physics.add_rigidbody(body);
+	physics.add(body);
 
 	return entity;
 }
@@ -506,12 +506,12 @@ void Gears::create_plane(const math::rgb& color, const v3& position, const v3& n
     auto body = new btRigidBody(info);
     body->setUserIndex(static_cast<int32_t>(plane.id().id()));
 
-    physics.add_rigidbody(body);
+    physics.add(body);
 }
 
 int32_t main()
 {
-	Gears game; game.run({ "Gears", 8, false, false, true }, { 1280, 768 });
-
+	Gears game; game.run({ "Gears", 8, false, false, true },
+	                       { 1280, 768 });
 	return 0;
 }
