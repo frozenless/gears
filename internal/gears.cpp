@@ -108,7 +108,6 @@ void Gears::init()
 
     {
         auto entity   = ecs.entities.create();
-        auto light    = entity.assign<components::light>();
         auto rotation = entity.assign<components::rotation>();
         rotation->speed  = 2.0f;
         rotation->radius = 10.0f;
@@ -123,6 +122,7 @@ void Gears::init()
         entity.assign<components::transform>();
         entity.assign<components::position>();
         entity.assign<components::selectable>();
+        entity.assign<components::light>();
 
         physics.add(body);
     }
