@@ -61,16 +61,16 @@ void Gears::input(const int32_t action, const int32_t key)
 
                     if (const int32_t index = hit.m_collisionObject->getUserIndex(); index != -1) {
 
-                        ecs.entities.each<components::selectable>([](entityx::Entity entity,
+                        ecs.entities.each<components::selectable>([](entityx::Entity,
                                           components::selectable& selectable) {
 
                             selectable.selected = false;
                         });
 
-                        auto id     = ecs.entities.create_id(hit.m_collisionObject->getUserIndex());
-                        auto entity = ecs.entities.get(id);
+                        auto id = ecs.entities.create_id(hit.m_collisionObject->getUserIndex());
+                        auto e  = ecs.entities.get(id);
 
-                        entity.component<components::selectable>()->selected = true;
+                        e.component<components::selectable>()->selected = true;
                     }
                 }
 			}
@@ -96,32 +96,23 @@ void Gears::init()
 	gear.teeth = 13;
 
     {
-        auto entity = ecs.entities.create();
-        entity.assign<components::transform>();
+        auto entity  = ecs.entities.create();
+        auto camera  = entity.assign<components::camera>();
+        camera->main = true;
+
         auto position = entity.assign<components::position>();
-        auto camera   = entity.assign<components::camera>();
-        camera->main  = true;
+        position->z   = 20.0f;
 
-        position->x = 0.0f;
-        position->y = 0.0f;
-        position->z = 20.0f;
-
-        auto viewport = entity.assign<components::viewport>();
+        auto viewport    = entity.assign<components::viewport>();
         viewport->width  = 1280.0f;
         viewport->height = 768.0f;
+
+        entity.assign<components::transform>();
     }
 
     {
-        auto entity = ecs.entities.create();
-        entity.assign<components::position>();
-        entity.assign<components::selectable>();
-
-        auto light = entity.assign<components::light>();
-        light->position = { 0.0f, 0.0f, 10.0f };
-        light->ambient  = 0.4f;
-        light->diffuse  = 0.7f;
-        light->specular = 0.65f;
-
+        auto entity   = ecs.entities.create();
+        auto light    = entity.assign<components::light>();
         auto rotation = entity.assign<components::rotation>();
         rotation->speed  = 2.0f;
         rotation->radius = 10.0f;
@@ -134,6 +125,8 @@ void Gears::init()
 
         entity.assign<components::rigidbody>()->body = body;
         entity.assign<components::transform>();
+        entity.assign<components::position>();
+        entity.assign<components::selectable>();
 
         physics.add_rigidbody(body);
     }
@@ -470,14 +463,8 @@ entityx::Entity Gears::create(const v3& position, const math::rgb& color, const 
 	body->setLinearFactor({ 0, 0, 0 });
 	body->setUserIndex(static_cast<int32_t>(entity.id().id()));
 
-	if (speed > 0.0f)
-	{
-		body->setAngularVelocity({ 0, 0, speed });
-	}
-	else
-	{
-		body->setAngularFactor({ 0, 0, 1 });
-	}
+	speed > 0.0f ? body->setAngularVelocity({ 0, 0, speed }) :
+	        	   body->setAngularFactor({ 0, 0, 1 });
 
 	entity.assign<components::rigidbody>()->body = body;
 
@@ -488,7 +475,7 @@ entityx::Entity Gears::create(const v3& position, const math::rgb& color, const 
 
 std::shared_ptr<Mesh> Gears::create_rail(const int32_t length) const
 {
-    std::vector<v3> vertices;
+    std::vector<v3>       vertices;
     std::vector<uint32_t> indices;
 
     gl::Layout layout;
