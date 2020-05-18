@@ -31,7 +31,7 @@
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 
-gl::program_ptr model_shader;
+gl::program_ptr shader;
 
 const btVector3 axis(0, 0, 1);
 
@@ -78,10 +78,10 @@ void Gears::input(const int32_t action, const int32_t key)
 
 void Gears::init()
 {
-	auto model_vert = Assets::create("shaders/glsl/model.vert", GL_VERTEX_SHADER);
-	auto model_frag = Assets::create("shaders/glsl/model.frag", GL_FRAGMENT_SHADER);
+	auto vertex   = Assets::create("shaders/glsl/model.vert", GL_VERTEX_SHADER);
+	auto fragment = Assets::create("shaders/glsl/model.frag", GL_FRAGMENT_SHADER);
 
-	model_shader = Assets::create(model_vert, model_frag);
+    shader = Assets::create(vertex, fragment);
 
     ecs.systems.add<systems::Rotation>();
 
@@ -135,7 +135,7 @@ void Gears::init()
 
 void Gears::release()
 {
-	model_shader->release();
+	shader->release();
 
 	ui::Editor::release();
 }
@@ -429,7 +429,7 @@ entityx::Entity Gears::create(const v3& position, const math::rgb& color, const 
 	auto entity   = ecs.entities.create();
 	auto renderer = entity.assign<components::renderer>();
 
-	renderer->shader = model_shader;
+	renderer->shader = shader;
     renderer->mesh   = create_gear();
 
 	renderer->material = std::make_shared<Material>();
@@ -474,7 +474,7 @@ void Gears::create_plane(const math::rgb& color, const v3& position, const v3& n
     auto plane    = ecs.entities.create();
     auto renderer = plane.assign<components::renderer>();
 
-    renderer->shader   = model_shader;
+    renderer->shader   = shader;
     renderer->mesh     = Importer::import("models/plane.obj");
     renderer->material = std::make_shared<Material>();
     renderer->material->color     = color;
