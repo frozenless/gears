@@ -51,7 +51,7 @@ void Gears::input(const int32_t action, const int32_t key)
 		    if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow)) {
 
                 auto entities = ecs.entities.entities_with_components<lamp::components::camera>();
-                auto camera   = std::find_if(entities.begin(), entities.begin(), [](entityx::Entity e) {
+                auto camera   = std::find_if(entities.begin(), entities.end(), [](entityx::Entity e) {
                     return e.component<lamp::components::camera>()->main;
                 });
 
@@ -114,8 +114,9 @@ void Gears::init()
     {
         auto entity = ecs.entities.create();
         entity.assign<lamp::components::position>();
+        entity.assign<lamp::components::selectable>();
 
-        auto light  = entity.assign<lamp::components::light>();
+        auto light = entity.assign<lamp::components::light>();
         light->position = { 0.0f, 0.0f, 10.0f };
         light->ambient  = 0.4f;
         light->diffuse  = 0.7f;
@@ -124,6 +125,17 @@ void Gears::init()
         auto rotation = entity.assign<lamp::components::rotation>();
         rotation->speed  = 2.0f;
         rotation->radius = 10.0f;
+
+        auto box = new btBoxShape({ 0.25f, 0.25f, 0.25f });
+        btRigidBody::btRigidBodyConstructionInfo info(0.0f, new btDefaultMotionState(), box);
+
+        auto body = new btRigidBody(info);
+        body->setUserIndex(static_cast<int32_t>(entity.id().id()));
+
+        entity.assign<lamp::components::rigidbody>()->body = body;
+        entity.assign<lamp::components::transform>();
+
+        physics.add_rigidbody(body);
     }
 
 	create_plane({ 0.8f, 0.4f, 0.4f }, { 0.0f, -4.0f,   0.0f }, { 0, 1, 0 }, { 0, 0, 1 },  0.0f);
@@ -216,32 +228,38 @@ void Gears::draw()
 		ImGui::End();
 
         auto entities = ecs.entities.entities_with_components<lamp::components::selectable>();
-        auto entity   = std::find_if(entities.begin(), entities.begin(), [](entityx::Entity e) {
-            return e.component<lamp::components::selectable>()->selected;
+        auto entity   = std::find_if(entities.begin(), entities.end(), [](entityx::Entity e) {
+
+            auto   selectable = e.component<lamp::components::selectable>();
+            return selectable->selected && !selectable->disabled;
         });
 
-        if ((*entity).has_component<lamp::components::rigidbody>())
+        if (entity != entities.end())
         {
-            ImGui::Begin("Gear", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
-
-            if (ImGui::Button("Remove"))
+            if (auto selected = (*entity); selected.has_component<lamp::components::rigidbody>())
             {
-                auto body = (*entity).component<lamp::components::rigidbody>()->body;
+                ImGui::Begin("Gear", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 
-                body->setLinearFactor({ 1, 1, 1 });
-                body->setAngularFactor({ 1, 1, 1 });
+                if (ImGui::Button("Remove")) {
 
-                body->applyCentralImpulse({ 0, 0, -25.0f });
+                                selected.component<lamp::components::selectable>()->disabled = true;
+                    auto body = selected.component<lamp::components::rigidbody>()->body;
 
-                for (int32_t i = 0; i < body->getNumConstraintRefs(); i++)
-                {
-                    auto constraint = body->getConstraintRef(i);
+                    body->setLinearFactor({1, 1, 1});
+                    body->setAngularFactor({1, 1, 1});
 
-                    body->removeConstraintRef(constraint);
+                    body->applyCentralImpulse({0, 0, -25.0f});
+
+                    for (int32_t i = 0; i < body->getNumConstraintRefs(); i++)
+                    {
+                        auto constraint = body->getConstraintRef(i);
+
+                        body->removeConstraintRef(constraint);
+                    }
                 }
-            }
 
-            ImGui::End();
+                ImGui::End();
+            }
         }
 	}
 
