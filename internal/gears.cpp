@@ -104,6 +104,9 @@ void Gears::init()
         viewport->height = 768.0f;
 
         entity.assign<components::transform>();
+
+        events::CameraAspect event { entity, 1280.0f, 768.0f };
+        ecs.events.emit(event);
     }
 
     {
