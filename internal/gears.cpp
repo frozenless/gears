@@ -104,9 +104,6 @@ void Gears::init()
         viewport->height = 768.0f;
 
         entity.assign<components::transform>();
-
-        events::CameraAspect event { entity, 1280.0f, 768.0f };
-        ecs.events.emit(event);
     }
 
     {
@@ -466,7 +463,6 @@ entityx::Entity Gears::create(const v3& position, const math::rgb& color, const 
 	        	   body->setAngularFactor({ 0, 0, 1 });
 
 	entity.assign<components::rigidbody>()->body = body;
-
 	physics.add(body);
 
 	return entity;
