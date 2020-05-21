@@ -14,6 +14,7 @@
 #include "engine/components/viewport.hpp"
 
 #include "engine/editor.hpp"
+#include "engine/primitives.hpp"
 
 #include "physics/utils.hpp"
 #include "common/random.hpp"
@@ -124,8 +125,11 @@ void Gears::init()
         physics.add(body);
     }
 
-	create_plane({ 0.8f, 0.4f, 0.4f }, { 0.0f, -4.0f,   0.0f }, { 0, 1, 0 }, { 0, 0, 1 },  0.0f);
-    create_plane({ 0.6f, 0.4f, 0.2f }, { 0.0f, 16.0f, -20.0f }, { 0, 0, 1 }, { 1, 0, 0 }, 90.0f);
+	auto down = Primitives::create_plane(physics, ecs.entities, { 0.8f, 0.4f, 0.4f }, { 0.0f, -4.0f,   0.0f }, { 0, 1, 0 }, { 0, 0, 1 },  0.0f);
+    auto back = Primitives::create_plane(physics, ecs.entities, { 0.6f, 0.4f, 0.2f }, { 0.0f, 16.0f, -20.0f }, { 0, 0, 1 }, { 1, 0, 0 }, 90.0f);
+
+    down.component<components::renderer>()->shader = shader;
+    back.component<components::renderer>()->shader = shader;
 
 	ui::Editor::init(static_cast<GLFWwindow*>(_window));
 }
@@ -456,30 +460,6 @@ entityx::Entity Gears::create(const v3& position, const math::rgb& color, const 
 	physics.add(body);
 
 	return entity;
-}
-
-void Gears::create_plane(const math::rgb& color, const v3& position, const v3& normal, const v3& axes, const float angle)
-{
-    auto plane    = ecs.entities.create();
-    auto renderer = plane.assign<components::renderer>();
-
-    renderer->shader   = shader;
-    renderer->mesh     = Importer::import("models/plane.obj");
-    renderer->material = std::make_shared<Material>();
-    renderer->material->color     = color;
-    renderer->material->shininess = 128.0f;
-
-    auto world = glm::translate(glm::identity<m4>(), position);
-    plane.assign<components::transform>()->world = glm::rotate(world, glm::radians(angle), axes);
-    plane.assign<components::selectable>();
-
-    btRigidBody::btRigidBodyConstructionInfo info(0.0f,
-                                                  new btDefaultMotionState(physics::from(position, glm::identity<quat>())),
-                                                  new btStaticPlaneShape({ normal.x, normal.y, normal.z }, 0));
-    auto body = new btRigidBody(info);
-    body->setUserIndex(static_cast<int32_t>(plane.id().id()));
-
-    physics.add(body);
 }
 
 int32_t main()

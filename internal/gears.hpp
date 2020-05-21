@@ -20,8 +20,6 @@ protected:
     entityx::Entity create(const v3& position, const math::rgb& color, bool middle, float speed = 0.0f);
 
 private:
-    void create_plane(const math::rgb& color, const v3& position, const v3& normal, const v3& axes, float angle);
-
     [[nodiscard]] std::shared_ptr<Mesh> create_gear() const;
 
 	bool _show_menu = false;
