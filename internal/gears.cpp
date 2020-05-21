@@ -1,10 +1,7 @@
 #include "gears.hpp"
 
 #include "engine/systems/rotation.hpp"
-#include "engine/systems/camera.hpp"
 #include "engine/systems/renderer.hpp"
-#include "engine/systems/physics.hpp"
-#include "engine/systems/light.hpp"
 #include "engine/systems/editor.hpp"
 
 #include "engine/components/transform.hpp"
@@ -142,10 +139,7 @@ void Gears::release()
 
 void Gears::update(const float delta_time)
 {
-	ecs.systems.update<systems::Physics>(delta_time);
-	ecs.systems.update<systems::Rotation>(delta_time);
-	ecs.systems.update<systems::Camera>(delta_time);
-	ecs.systems.update<systems::Light>(delta_time);
+    ecs.systems.update<systems::Rotation>(delta_time);
 
 	constexpr float camera_speed = 6.1f;
 
@@ -169,10 +163,6 @@ void Gears::update(const float delta_time)
 
 void Gears::draw()
 {
-	gl::Renderer::clear();
-
-	ecs.systems.update<systems::Renderer>(0);
-
 	ui::Editor::begin();
 
 	ecs.systems.update<systems::Editor>(0);
