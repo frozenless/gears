@@ -110,19 +110,15 @@ void Gears::init()
         rotation->speed  = 2.0f;
         rotation->radius = 10.0f;
 
-        auto box = new btBoxShape({ 0.25f, 0.25f, 0.25f });
-        btRigidBody::btRigidBodyConstructionInfo info(0.0f, new btDefaultMotionState(), box);
+        auto object = new btCollisionObject();
+        object->setUserIndex(static_cast<int32_t>(entity.id().id()));
 
-        auto body = new btRigidBody(info);
-        body->setUserIndex(static_cast<int32_t>(entity.id().id()));
-
-        entity.assign<components::rigidbody>()->body = body;
         entity.assign<components::transform>();
         entity.assign<components::position>();
         entity.assign<components::selectable>();
         entity.assign<components::light>();
 
-        physics.add(body);
+        physics.add(object, new btBoxShape({ 0.25f, 0.25f, 0.25f }), btCollisionObject::CF_NO_CONTACT_RESPONSE);
     }
 
 	auto down = Primitives::create_plane(physics, ecs.entities, { 0.8f, 0.4f, 0.4f }, { 0.0f, -4.0f,   0.0f }, { 0, 1, 0 }, { 0, 0, 1 },  0.0f);
