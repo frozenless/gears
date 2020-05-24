@@ -3,4 +3,4 @@
 	url = https://github.com/frozenless/lamp.git
 [submodule "build/shaders"]
 	path = build/shaders
-	url = https://github.com/frozenless/bundle.git
+	url = https://github.com/frozenless/shaders.git

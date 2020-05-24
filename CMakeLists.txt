@@ -8,8 +8,7 @@ add_executable(${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME}      PRIVATE Lamp)
 target_include_directories(${PROJECT_NAME} PRIVATE internal)
 
-target_sources(${PROJECT_NAME} PRIVATE internal/gears.cpp
-    internal/systems/rotation.cpp)
+target_sources(${PROJECT_NAME} PRIVATE internal/gears.cpp)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/build"

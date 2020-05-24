@@ -121,8 +121,8 @@ void Gears::init()
         physics.add(object, new btBoxShape({ 0.25f, 0.25f, 0.25f }), btCollisionObject::CF_NO_CONTACT_RESPONSE);
     }
 
-	auto down = Primitives::create_plane(physics, ecs.entities, { 0.8f, 0.4f, 0.4f }, { 0.0f, -4.0f,   0.0f }, { 0, 1, 0 }, { 0, 0, 1 },  0.0f);
-    auto back = Primitives::create_plane(physics, ecs.entities, { 0.6f, 0.4f, 0.2f }, { 0.0f, 16.0f, -20.0f }, { 0, 0, 1 }, { 1, 0, 0 }, 90.0f);
+	auto down = Primitives::create_plane(physics, ecs.entities, { 0.8f, 0.4f, 0.4f }, { 0.0f, -4.0f,   0.0f }, { 0, 1, 0 }, 20.0f, { 0, 0, 1 },  0.0f);
+    auto back = Primitives::create_plane(physics, ecs.entities, { 0.6f, 0.4f, 0.2f }, { 0.0f, 16.0f, -20.0f }, { 0, 0, 1 }, 20.0f, { 1, 0, 0 }, 90.0f);
 
     down.component<components::renderer>()->shader = shader;
     back.component<components::renderer>()->shader = shader;
